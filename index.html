@@ -1,0 +1,602 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="HORUS Terrain">
+<meta name="theme-color" content="#223558"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icone-180.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style>
+</head><body>
+<title>HORUS Terrain</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout : application mobile une colonne, barre de titre collante, actions principales en bas d'écran */
+:root{
+  --nuit:#223558; --vert:#A0C555; --vert-f:#6E9A2A;
+  --fond:#EEF1F6; --carte:#FFFFFF; --texte:#1B2333; --doux:#5F6B82; --ligne:#D6DCE7; --champ:#F6F8FB;
+  --rouge:#C83333; --bleu-eau:#1B8AC9; --ombre:0 1px 2px rgba(20,30,60,.08),0 3px 12px rgba(20,30,60,.06);
+  --titre:"Avenir Next","Century Gothic","Montserrat","Futura","Segoe UI",system-ui,sans-serif;
+  --corps:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --fond:#111826; --carte:#1A2335; --texte:#E7ECF5; --doux:#9AA6BD; --ligne:#2C3850; --champ:#212C42; --nuit:#2B4475;
+  --ombre:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}}
+:root[data-theme="dark"]{--fond:#111826; --carte:#1A2335; --texte:#E7ECF5; --doux:#9AA6BD; --ligne:#2C3850; --champ:#212C42; --nuit:#2B4475;
+  --ombre:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%}
+body{margin:0;background:var(--fond);color:var(--texte);font:16px/1.4 var(--corps)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:#223558}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:#223558;color:#fff;
+  padding-block:10px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));
+  display:flex;align-items:center;gap:10px;min-height:56px}
+header h1{font:700 18px/1.15 var(--titre);margin:0;flex:1;min-width:0;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+header h1 small{display:block;font:500 12px/1.3 var(--corps);color:#B9C6DD;letter-spacing:0}
+header .marque{width:30px;height:30px;flex:0 0 30px;border-radius:7px;background:#A0C555;display:grid;place-items:center;font:800 13px var(--titre);color:#223558}
+header button{background:rgba(255,255,255,.12);color:#fff;border:0;border-radius:10px;min-width:44px;height:40px;font-size:15px;padding:0 12px}
+main{padding-block:14px 120px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:14px;max-width:760px;margin:0 auto}
+.carte{background:var(--carte);border-radius:14px;box-shadow:var(--ombre);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+h2{font:700 13px/1.2 var(--titre);text-transform:uppercase;letter-spacing:1.1px;color:var(--doux);margin:4px 2px 0}
+h3{font:700 15px/1.2 var(--titre);margin:0;color:var(--texte)}
+.ligne{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.esp{flex:1}
+.doux{color:var(--doux);font-size:13.5px}
+label.ch{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600;color:var(--doux);min-width:0}
+input,select,textarea{font:16px var(--corps);color:var(--texte);background:var(--champ);border:1px solid var(--ligne);border-radius:10px;padding:10px 11px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:70px}
+input:focus,select:focus,textarea:focus{outline:2px solid #A0C555;outline-offset:0;border-color:transparent}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+button{font:600 15px var(--corps);border-radius:12px;border:1px solid var(--ligne);background:var(--carte);color:var(--texte);min-height:44px;padding:0 14px;cursor:pointer}
+button:focus-visible{outline:2px solid #A0C555;outline-offset:2px}
+button.prim{background:#223558;color:#fff;border-color:#223558}
+button.vert{background:#A0C555;color:#223558;border-color:#A0C555}
+button.dang{color:var(--rouge);border-color:transparent;background:transparent}
+button.plein{width:100%}
+button.mini{min-height:36px;font-size:14px;padding:0 10px;border-radius:9px}
+.liste{display:flex;flex-direction:column}
+.it{display:flex;align-items:center;gap:12px;padding:12px 4px;border-top:1px solid var(--ligne);min-width:0;cursor:pointer}
+.it:first-child{border-top:0}
+.it .t{flex:1;min-width:0}
+.it .t b{display:block;font-size:16px}
+.it .t span{display:block;color:var(--doux);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.it .fl{color:var(--doux);font-size:20px}
+.badge{font:700 12px var(--titre);letter-spacing:.4px;padding:5px 8px;border-radius:7px;color:#fff;min-width:42px;text-align:center;flex:0 0 auto}
+.pill{display:inline-block;font-size:12px;padding:3px 8px;border-radius:20px;background:var(--champ);color:var(--doux);border:1px solid var(--ligne)}
+.pill.ok{background:#E7F3D6;color:#43611A;border-color:#CFE5AD}
+.vide{color:var(--doux);text-align:center;padding:18px 8px;font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{border-radius:20px;min-height:36px;padding:0 12px;font-weight:500;font-size:14px;background:var(--champ)}
+.chip.on{background:#223558;color:#fff;border-color:#223558}
+.couche{display:grid;grid-template-columns:62px 1fr;gap:10px;align-items:stretch;padding:8px 0;border-top:1px solid var(--ligne);cursor:pointer}
+.couche:first-child{border-top:0}
+.couche .prof{font:600 13px var(--corps);font-variant-numeric:tabular-nums;color:var(--doux);display:flex;flex-direction:column;justify-content:space-between}
+.couche .desc{display:flex;gap:9px;align-items:stretch;min-width:0}
+.couche .desc i{width:14px;flex:0 0 14px;border-radius:3px}
+.couche .desc span{min-width:0;font-size:15px}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.photos figure{margin:0;position:relative}
+.photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:9px;display:block;background:var(--champ)}
+.photos figcaption{font-size:11.5px;color:var(--doux);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.barre{position:fixed;left:0;right:0;bottom:0;z-index:6;background:color-mix(in srgb,var(--carte) 92%,transparent);backdrop-filter:blur(10px);
+  border-top:1px solid var(--ligne);padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
+  padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;gap:10px;justify-content:center}
+.barre>*{flex:1;max-width:360px}
+.feuille{position:fixed;inset:0;z-index:20;background:rgba(17,24,38,.5);display:flex;align-items:flex-end;justify-content:center}
+.feuille>div{background:var(--fond);width:100%;max-width:760px;max-height:94%;overflow:auto;border-radius:18px 18px 0 0;
+  padding-top:12px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:12px}
+.feuille .poignee{width:42px;height:5px;border-radius:3px;background:var(--ligne);align-self:center}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:30;background:#223558;color:#fff;
+  padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:var(--ombre);max-width:90%}
+.alerte{background:#FFF4DE;color:#7A4B00;border-radius:12px;padding:10px 12px;font-size:13.5px}
+.gps{font-variant-numeric:tabular-nums;font-size:14px}
+.num{font-variant-numeric:tabular-nums;text-align:right}
+.rel{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--ligne);font-variant-numeric:tabular-nums}
+.rel:first-child{border-top:0}
+@media (max-width:380px){.g3{grid-template-columns:1fr 1fr}}
+@media (prefers-reduced-motion: no-preference){.feuille>div{animation:monte .18s ease-out}@keyframes monte{from{transform:translateY(30px);opacity:.6}}}
+</style>
+
+<header>
+  <button id="b-retour" aria-label="Retour" hidden>‹</button>
+  <div class="marque" id="marque" aria-hidden="true">H</div>
+  <h1 id="titre">HORUS Terrain<small>Sondages · GINGER CEBTP</small></h1>
+  <button id="b-action" hidden></button>
+</header>
+<main id="main"></main>
+<div class="barre" id="barre" hidden></div>
+
+<script>
+"use strict";
+/* ============================================================ HORUS Terrain
+   Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
+const VERSION_APP = "1.0";
+const TYPES = {
+  SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
+  PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
+  CPT: ["Pénétromètre statique", "#7B1FA2"], RF: ["Reconnaissance de fondation", "#00897B"], PZ: ["Piézomètre", "#1B8AC9"],
+};
+/* matériaux : id de motif HORUS, genre, famille (fin, grenu, roche, autre), couleur du motif */
+const MATERIAUX = [
+  ["terre_vegetale", "Terre végétale", "f", "autre", "#6B4F2A"], ["remblai", "Remblai", "m", "autre", "#9E9E9E"],
+  ["argile", "Argile", "f", "fin", "#B98A5A"], ["limon", "Limon", "m", "fin", "#D8B98A"], ["sable", "Sable", "m", "grenu", "#E8D49B"],
+  ["grave", "Grave", "f", "grenu", "#BFA77A"], ["marne", "Marne", "f", "fin", "#B7B79A"], ["tourbe", "Tourbe", "f", "fin", "#3E3A2E"],
+  ["calcaire", "Calcaire", "m", "roche", "#D9D3C0"], ["gres", "Grès", "m", "roche", "#D2B48C"], ["flysch", "Flysch", "m", "roche", "#8E8B7E"],
+  ["roche_alteree", "Roche altérée", "f", "roche", "#A39D8F"], ["enrobe", "Enrobé", "m", "autre", "#4A4A4A"], ["beton", "Béton", "m", "autre", "#E8838C"],
+];
+const MAT = Object.fromEntries(MATERIAUX.map(m => [m[0], { id: m[0], lib: m[1], g: m[2], fam: m[3], c: m[4] }]));
+const COUL_MOTIF = { ...Object.fromEntries(MATERIAUX.map(m => [m[0], m[4]])), argile_limoneuse: "#C49A6C", argile_galets: "#A9784A", argile_graveleuse: "#7A5532", sable_graveleux: "#DCC488" };
+const SECONDAIRES = [["sableux", "sableuse"], ["limoneux", "limoneuse"], ["argileux", "argileuse"], ["graveleux", "graveleuse"], ["à galets", "à galets"], ["à blocs", "à blocs"], ["à débris", "à débris"]];
+const COULEURS = [["beige", "beige"], ["marron", "marron"], ["brun", "brune"], ["ocre", "ocre"], ["gris", "grise"], ["noir", "noire"], ["jaune", "jaune"], ["verdâtre", "verdâtre"], ["rougeâtre", "rougeâtre"], ["blanchâtre", "blanchâtre"], ["bariolé", "bariolée"]];
+const ETATS = {
+  fin: [["très mou", "très molle"], ["mou", "molle"], ["ferme", "ferme"], ["raide", "raide"], ["très raide", "très raide"], ["dur", "dure"]],
+  grenu: [["lâche", "lâche"], ["moyennement dense", "moyennement dense"], ["dense", "dense"], ["très dense", "très dense"]],
+  roche: [["très altéré", "très altérée"], ["altéré", "altérée"], ["fracturé", "fracturée"], ["sain", "saine"]],
+  autre: [],
+};
+const HUMIDITES = [["sec", "sèche"], ["humide", "humide"], ["très humide", "très humide"], ["saturé", "saturée"]];
+
+// ------------------------------------------------------------ outils
+const $ = s => document.querySelector(s);
+function h(tag, a, ...k) {
+  const e = document.createElement(tag);
+  for (const [n, v] of Object.entries(a || {})) {
+    if (v == null || v === false) continue;
+    if (n.startsWith("on")) e.addEventListener(n.slice(2), v);
+    else if (n === "style" && typeof v === "object") Object.assign(e.style, v);
+    else if (n in e && typeof v !== "string") e[n] = v;
+    else e.setAttribute(n, v === true ? "" : v);
+  }
+  for (const c of k.flat()) if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(c));
+  return e;
+}
+const uid = p => p + "_" + Math.random().toString(16).slice(2, 10);
+const num = v => { const x = parseFloat(String(v ?? "").replace(/\s/g, "").replace(",", ".")); return isFinite(x) ? x : null; };
+const fr = (x, n = 2) => x == null || isNaN(x) ? "–" : Number(x).toFixed(n).replace(".", ",");
+const aff = v => v == null ? "" : String(+(+v).toFixed(4)).replace(".", ",");
+const aujourdhui = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+const maintenant = () => { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+const dateFr = d => d ? d.split("-").reverse().join("/") : "";
+function toast(t, ms = 2600) { const e = h("div", { class: "toast", role: "status" }, t); document.body.append(e); setTimeout(() => e.remove(), ms); }
+
+// ------------------------------------------------------------ stockage (IndexedDB, repli en mémoire)
+const STORE = { db: null, memoire: new Map(), ok: false };
+function ouvrirBase() {
+  return new Promise(ok => {
+    try {
+      const r = indexedDB.open("horus-terrain", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("dossiers", { keyPath: "id" });
+      r.onsuccess = () => { STORE.db = r.result; STORE.ok = true; ok(); };
+      r.onerror = () => ok();
+    } catch (e) { ok(); }
+  });
+}
+function lireTout() {
+  return new Promise(ok => {
+    if (!STORE.db) return ok([...STORE.memoire.values()]);
+    try {
+      const r = STORE.db.transaction("dossiers").objectStore("dossiers").getAll();
+      r.onsuccess = () => ok(r.result || []); r.onerror = () => ok([...STORE.memoire.values()]);
+    } catch (e) { ok([...STORE.memoire.values()]); }
+  });
+}
+function ecrire(d) {
+  d.maj = new Date().toISOString();
+  STORE.memoire.set(d.id, d);
+  if (!STORE.db) return Promise.resolve();
+  return new Promise(ok => {
+    try { const t = STORE.db.transaction("dossiers", "readwrite"); t.objectStore("dossiers").put(d); t.oncomplete = ok; t.onerror = () => { toast("Enregistrement impossible sur cet appareil."); ok(); }; }
+    catch (e) { ok(); }
+  });
+}
+function effacer(id) {
+  STORE.memoire.delete(id);
+  if (!STORE.db) return Promise.resolve();
+  return new Promise(ok => { try { const t = STORE.db.transaction("dossiers", "readwrite"); t.objectStore("dossiers").delete(id); t.oncomplete = ok; t.onerror = ok; } catch (e) { ok(); } });
+}
+
+// ------------------------------------------------------------ état et navigation
+let DOSSIERS = [], PILE = [{ v: "accueil" }];
+const vue = () => PILE[PILE.length - 1];
+const D = () => DOSSIERS.find(d => d.id === vue().d);
+const S = () => { const d = D(); return d && d.sondages.find(s => s.id === vue().s); };
+function aller(v) { PILE.push(v); rendre(); window.scrollTo(0, 0); }
+function retour() { if (PILE.length > 1) PILE.pop(); rendre(); window.scrollTo(0, 0); }
+let minuterie = null;
+function sauver(d = D()) { if (!d) return; clearTimeout(minuterie); minuterie = setTimeout(() => ecrire(d), 300); }
+
+function entete(titre, sous, action) {
+  $("#titre").innerHTML = ""; $("#titre").append(titre, h("small", {}, sous || ""));
+  $("#b-retour").hidden = PILE.length <= 1;
+  $("#marque").hidden = PILE.length > 1;
+  const b = $("#b-action");
+  b.hidden = !action; b.textContent = action ? action[0] : ""; b.onclick = action ? action[1] : null;
+}
+function barre(...btns) { const b = $("#barre"); b.innerHTML = ""; const l = btns.filter(Boolean); b.hidden = !l.length; b.append(...l); }
+function rendre() {
+  const m = $("#main"); m.innerHTML = "";
+  const v = vue().v;
+  if (v === "accueil") m.append(...vueAccueil());
+  else if (v === "dossier") m.append(...vueDossier());
+  else if (v === "sondage") m.append(...vueSondage());
+  else if (v === "tournee") m.append(...vueTournee());
+}
+$("#b-retour").onclick = retour;
+
+// ------------------------------------------------------------ champs
+function champ(lab, obj, cle, o = {}) {
+  let i;
+  if (o.type === "select") {
+    i = h("select", { id: o.id, onchange: () => { obj[cle] = i.value; sauver(); o.apres && o.apres(); } }, ...o.options.map(([v, l]) => h("option", { value: v, selected: String(obj[cle] ?? "") === v }, l)));
+  } else if (o.type === "textarea") {
+    i = h("textarea", { id: o.id, rows: o.rows || 3, placeholder: o.ph || "", oninput: () => { obj[cle] = i.value; sauver(); } }); i.value = obj[cle] || "";
+  } else {
+    const nb = o.type === "num";
+    i = h("input", { id: o.id, type: nb ? "text" : (o.type || "text"), inputmode: nb ? "decimal" : null, placeholder: o.ph || "", class: nb ? "num" : null, autocapitalize: o.caps || null });
+    i.value = nb ? aff(obj[cle]) : (obj[cle] ?? "");
+    i.addEventListener(nb ? "change" : "input", () => { obj[cle] = nb ? num(i.value) : i.value; if (nb) i.value = aff(obj[cle]); sauver(); o.apres && o.apres(); });
+  }
+  return h("label", { class: "ch" }, lab, i);
+}
+function feuille(titre, contenu, actions) {
+  const f = h("div", { class: "feuille", onclick: e => { if (e.target === f) f.remove(); } });
+  const fermer = () => f.remove();
+  f.append(h("div", { role: "dialog", "aria-label": titre }, h("div", { class: "poignee" }), h("h3", {}, titre), ...[].concat(contenu),
+    h("div", { class: "ligne" }, h("button", { onclick: fermer }, "Annuler"), h("span", { class: "esp" }), ...(actions ? actions(fermer) : []))));
+  document.body.append(f);
+  return fermer;
+}
+function confirmer(texte, oui, libelle = "Supprimer") {
+  feuille("Confirmer", h("p", {}, texte), fermer => [h("button", { class: "prim", style: { background: "var(--rouge)", borderColor: "var(--rouge)" }, onclick: () => { fermer(); oui(); } }, libelle)]);
+}
+
+// ------------------------------------------------------------ accueil
+function vueAccueil() {
+  entete("HORUS Terrain", "Sondages · GINGER CEBTP");
+  barre(h("button", { class: "prim", onclick: nouveauDossier }, "+ Nouveau dossier"));
+  const out = [];
+  if (!STORE.ok) out.push(h("div", { class: "alerte" }, "Le stockage de cet appareil est indisponible : vos saisies seront perdues à la fermeture. Exportez avant de quitter."));
+  const tri = DOSSIERS.slice().sort((a, b) => (b.maj || "").localeCompare(a.maj || ""));
+  out.push(h("h2", {}, "Dossiers sur ce téléphone"));
+  out.push(h("div", { class: "carte" }, tri.length ? h("div", { class: "liste" }, ...tri.map(d => {
+    const nbp = d.sondages.reduce((a, s) => a + s.photos.length, 0);
+    return h("div", { class: "it", onclick: () => aller({ v: "dossier", d: d.id }) },
+      h("div", { class: "t" }, h("b", {}, (d.numero ? d.numero + " · " : "") + (d.nom || "Dossier sans nom")),
+        h("span", {}, d.sondages.length + " sondage(s) · " + nbp + " photo(s)" + (d.commune ? " · " + d.commune : ""))),
+      d.exporte ? h("span", { class: "pill ok" }, "envoyé") : null, h("span", { class: "fl" }, "›"));
+  })) : h("div", { class: "vide" }, "Aucun dossier. Créez-en un pour commencer la campagne de sondages.",
+    h("div", { style: { marginTop: "12px" } }, h("button", { class: "mini", onclick: exemple }, "Ouvrir un dossier d'exemple")))));
+  out.push(h("p", { class: "doux", style: { margin: "4px 4px 0" } }, "Les saisies restent sur ce téléphone, même sans réseau. Envoyez le dossier par mail pour l'importer dans HORUS (bouton « Importer… »). Version " + VERSION_APP + "."));
+  return out;
+}
+async function exemple() {
+  const s1 = { id: uid("s"), nom: "SP1", type: "SP", date: aujourdhui(), operateur: "", machine: "M326", lat: 43.2951, lon: -0.3708, prec: 4, z: null, prof: 12, nappe: 3.4,
+    venues: [{ prof: 3.2, txt: "venue faible" }], outils: [{ de: 0, a: 12, txt: "Tricône Ø63" }], tubages: [{ de: 0, a: 3, txt: "LS Ø95" }], photos: [], commentaire: "Exemple : à supprimer.", piezo: null,
+    lithologie: [{ de: 0, a: 0.3, description: "Terre végétale marron, humide", motif: "terre_vegetale" }, { de: 0.3, a: 4.2, description: "Argile limoneuse beige à ocre, ferme, humide", motif: "argile_limoneuse" },
+      { de: 4.2, a: 12, description: "Sable graveleux gris, dense, saturé", motif: "sable_graveleux" }] };
+  const s2 = { ...JSON.parse(JSON.stringify(s1)), id: uid("s"), nom: "PZ1", type: "PZ", nappe: null, venues: [], piezo: { hauteur_tete: 0.5, prof_tube: 8, crepine_de: 2, crepine_a: 8, ref: "tete", releves: [{ date: aujourdhui(), heure: "09:30", mesure: 3.85, sec: false, ref: "tete", commentaire: "" }] } };
+  const d = { id: uid("dos"), numero: "EXEMPLE", nom: "Dossier d'exemple (à supprimer)", commune: "Pau", operateur: "", machine: "M326", cree: new Date().toISOString(), sondages: [s1, s2] };
+  DOSSIERS.push(d); await ecrire(d); aller({ v: "dossier", d: d.id });
+}
+function nouveauDossier() {
+  const d = { id: uid("dos"), numero: "", nom: "", commune: "", operateur: "", machine: "", cree: new Date().toISOString(), sondages: [] };
+  feuille("Nouveau dossier", [champ("Numéro d'affaire", d, "numero", { ph: "ex. SBA2.P.0095", caps: "characters" }), champ("Nom du dossier", d, "nom", { ph: "ex. Lotissement Les Chênes" }),
+    champ("Commune", d, "commune"), h("div", { class: "g2" }, champ("Opérateur", d, "operateur"), champ("Machine", d, "machine", { ph: "M326" }))],
+  fermer => [h("button", { class: "prim", onclick: async () => { DOSSIERS.push(d); await ecrire(d); fermer(); aller({ v: "dossier", d: d.id }); } }, "Créer")]);
+}
+
+// ------------------------------------------------------------ dossier
+function vueDossier() {
+  const d = D();
+  if (!d) { PILE = [{ v: "accueil" }]; return vueAccueil(); }
+  entete(d.numero || d.nom || "Dossier", d.numero ? d.nom : d.commune, ["Envoyer", () => exporter(d)]);
+  const pz = d.sondages.filter(s => s.type === "PZ" || s.piezo);
+  barre(h("button", { class: "prim", onclick: () => nouveauSondage(d) }, "+ Sondage"), pz.length ? h("button", { class: "vert", onclick: () => aller({ v: "tournee", d: d.id }) }, "Tournée piézo") : null);
+  const ordre = d.sondages.slice();
+  return [
+    h("h2", {}, "Sondages"),
+    h("div", { class: "carte" }, ordre.length ? h("div", { class: "liste" }, ...ordre.map(s => h("div", { class: "it", onclick: () => aller({ v: "sondage", d: d.id, s: s.id }) },
+      h("span", { class: "badge", style: { background: TYPES[s.type][1] } }, s.type),
+      h("div", { class: "t" }, h("b", {}, s.nom), h("span", {}, resume(s))), h("span", { class: "fl" }, "›")))) : h("div", { class: "vide" }, "Aucun sondage. Touchez « + Sondage ».")),
+    h("h2", {}, "Dossier"),
+    h("div", { class: "carte" }, champ("Numéro d'affaire", d, "numero", { caps: "characters" }), champ("Nom", d, "nom"), champ("Commune", d, "commune"),
+      h("div", { class: "g2" }, champ("Opérateur", d, "operateur"), champ("Machine", d, "machine")),
+      d.exporte ? h("p", { class: "doux", style: { margin: 0 } }, "Dernier envoi : " + new Date(d.exporte).toLocaleString("fr-FR")) : null,
+      h("button", { class: "dang", onclick: () => confirmer("Supprimer le dossier « " + (d.numero || d.nom || "sans nom") + " » et toutes ses saisies de ce téléphone ?", async () => { DOSSIERS = DOSSIERS.filter(x => x !== d); await effacer(d.id); PILE = [{ v: "accueil" }]; rendre(); }) }, "Supprimer ce dossier du téléphone")),
+  ];
+}
+function resume(s) {
+  const p = [];
+  if (s.prof != null) p.push(fr(s.prof, 2) + " m");
+  if (s.lithologie.length) p.push(s.lithologie.length + " couche(s)");
+  if (s.photos.length) p.push(s.photos.length + " photo(s)");
+  if (s.lat != null) p.push("GPS");
+  if (s.piezo && s.piezo.releves.length) p.push(s.piezo.releves.length + " relevé(s) piézo");
+  return p.join(" · ") || TYPES[s.type][0];
+}
+function nouveauSondage(d) {
+  const derType = d.sondages.length ? d.sondages[d.sondages.length - 1].type : "SP";
+  const o = { type: derType, nom: "" };
+  const prochainNom = t => t + (d.sondages.filter(x => x.type === t).length + 1);
+  o.nom = prochainNom(o.type);
+  const inNom = h("input", { value: o.nom, autocapitalize: "characters", oninput: () => { o.nom = inNom.value; } });
+  const sel = h("select", { onchange: () => { o.type = sel.value; o.nom = prochainNom(o.type); inNom.value = o.nom; } }, ...Object.entries(TYPES).map(([k, v]) => h("option", { value: k, selected: k === o.type }, k + " - " + v[0])));
+  feuille("Nouveau sondage", [h("label", { class: "ch" }, "Type", sel), h("label", { class: "ch" }, "Nom", inNom)], fermer => [h("button", { class: "prim", onclick: async () => {
+    const nom = o.nom.trim();
+    if (!nom) return toast("Donnez un nom au sondage.");
+    if (d.sondages.some(x => x.nom.toLowerCase() === nom.toLowerCase())) return toast("Le sondage " + nom + " existe déjà.");
+    const s = { id: uid("s"), nom, type: o.type, date: aujourdhui(), operateur: d.operateur || "", machine: d.machine || "", lat: null, lon: null, prec: null, z: null, prof: null,
+      nappe: null, venues: [], lithologie: [], outils: [], tubages: [], photos: [], commentaire: "", piezo: o.type === "PZ" ? piezoVide() : null };
+    d.sondages.push(s); await ecrire(d); fermer(); aller({ v: "sondage", d: d.id, s: s.id });
+  } }, "Créer")]);
+}
+const piezoVide = () => ({ hauteur_tete: null, prof_tube: null, crepine_de: null, crepine_a: null, ref: "tete", releves: [] });
+
+// ------------------------------------------------------------ sondage
+function vueSondage() {
+  const d = D(), s = S();
+  if (!s) { PILE.pop(); return vueDossier(); }
+  entete(s.nom, TYPES[s.type][0] + (d.numero ? " · " + d.numero : ""));
+  const photoProf = ["SC", "PM", "T"].includes(s.type);
+  barre(h("button", { class: "prim", onclick: () => editerCouche(s, null) }, "+ Couche"), h("button", { class: "vert", onclick: () => prendrePhoto(s) }, "Photo"));
+  const zoneGps = h("div", { class: "gps doux" });
+  const majGps = () => { zoneGps.textContent = s.lat == null ? "Position non relevée" : fr(Math.abs(s.lat), 6) + (s.lat < 0 ? " S, " : " N, ") + fr(Math.abs(s.lon), 6) + (s.lon < 0 ? " O" : " E") + (s.prec ? "  (± " + Math.round(s.prec) + " m)" : ""); };
+  majGps();
+  const out = [
+    h("div", { class: "carte" },
+      h("div", { class: "g2" }, champ("Nom", s, "nom", { caps: "characters", apres: () => entete(s.nom, TYPES[s.type][0]) }), champ("Type", s, "type", { type: "select", options: Object.entries(TYPES).map(([k, v]) => [k, k + " - " + v[0]]), apres: () => { if (s.type === "PZ" && !s.piezo) s.piezo = piezoVide(); rendre(); } })),
+      h("div", { class: "g2" }, champ("Date", s, "date", { type: "date" }), champ("Profondeur atteinte (m)", s, "prof", { type: "num" })),
+      h("div", { class: "g2" }, champ("Opérateur", s, "operateur"), champ("Machine", s, "machine")),
+      h("div", { class: "ligne" }, zoneGps, h("span", { class: "esp" }), h("button", { class: "mini", onclick: () => releverGps(s, majGps) }, s.lat == null ? "Relever la position" : "Relever à nouveau")),
+      champ("Cote du terrain Z (m NGF, si connue)", s, "z", { type: "num" })),
+    h("h2", {}, "Lithologie"),
+    h("div", { class: "carte" }, s.lithologie.length ? h("div", {}, ...s.lithologie.map((c, i) => {
+      return h("div", { class: "couche", onclick: () => editerCouche(s, i) },
+        h("div", { class: "prof" }, h("span", {}, fr(c.de, 2)), h("span", {}, fr(c.a, 2))),
+        h("div", { class: "desc" }, h("i", { style: { background: COUL_MOTIF[c.motif] || "var(--ligne)" } }), h("span", {}, c.description || "(sans description)")));
+    })) : h("div", { class: "vide" }, "Aucune couche. Touchez « + Couche » en bas de l'écran.")),
+    h("h2", {}, "Eau"),
+    h("div", { class: "carte" }, champ("Niveau d'eau en fin de sondage (m/TN)", s, "nappe", { type: "num", ph: "vide si pas d'eau" }),
+      ...s.venues.map((v, i) => h("div", { class: "ligne" }, h("span", { class: "pill" }, "Venue d'eau à " + fr(v.prof, 2) + " m"), h("span", { class: "doux" }, v.txt || ""), h("span", { class: "esp" }),
+        h("button", { class: "dang mini", "aria-label": "Retirer", onclick: () => { s.venues.splice(i, 1); sauver(); rendre(); } }, "×"))),
+      h("button", { class: "mini", onclick: () => ajouterVenue(s) }, "+ Venue d'eau")),
+    h("h2", {}, "Outils et tubages"),
+    h("div", { class: "carte" }, ...passes(s, "outils", "Outil", "Tricône Ø63"), ...passes(s, "tubages", "Tubage", "LS Ø95")),
+    h("h2", {}, "Photos"),
+    h("div", { class: "carte" }, s.photos.length ? h("div", { class: "photos" }, ...s.photos.map((p, i) => h("figure", { onclick: () => editerPhoto(s, i, photoProf) },
+      h("img", { src: p.data, alt: p.legende || "Photo " + (i + 1) }), h("figcaption", {}, photoProf && p.de != null ? fr(p.de, 2) + " – " + fr(p.a, 2) + " m" : (p.legende || "Photo " + (i + 1)))))) : h("div", { class: "vide" }, "Aucune photo."),
+      h("button", { class: "mini", onclick: () => prendrePhoto(s, true) }, "Ajouter depuis la photothèque")),
+  ];
+  if (s.piezo) out.push(h("h2", {}, "Piézomètre"), cartePiezo(s));
+  else if (s.type !== "PZ") out.push(h("button", { onclick: () => { s.piezo = piezoVide(); sauver(); rendre(); } }, "Ce sondage est équipé en piézomètre"));
+  out.push(h("h2", {}, "Observations"), h("div", { class: "carte" }, champ("Remarques (foreur, arrêt, refus, venues…)", s, "commentaire", { type: "textarea", rows: 4 })),
+    h("button", { class: "dang", onclick: () => confirmer("Supprimer le sondage " + s.nom + " ?", () => { d.sondages = d.sondages.filter(x => x !== s); sauver(d); retour(); }) }, "Supprimer ce sondage"));
+  return out;
+}
+function passes(s, cle, lab, ph) {
+  return [
+    ...s[cle].map((p, i) => h("div", { class: "ligne" }, h("span", { class: "pill" }, fr(p.de, 2) + " → " + fr(p.a, 2) + " m"), h("span", {}, p.txt), h("span", { class: "esp" }),
+      h("button", { class: "dang mini", "aria-label": "Retirer", onclick: () => { s[cle].splice(i, 1); sauver(); rendre(); } }, "×"))),
+    h("button", { class: "mini", onclick: () => {
+      const prec = s[cle][s[cle].length - 1];
+      const o = { de: prec ? prec.a : 0, a: s.prof, txt: prec ? prec.txt : "" };
+      feuille(lab, [h("div", { class: "g2" }, champ("De (m)", o, "de", { type: "num" }), champ("À (m)", o, "a", { type: "num" })), champ(lab, o, "txt", { ph })],
+        f => [h("button", { class: "prim", onclick: () => { if (!o.txt) return toast("Précisez le " + lab.toLowerCase() + "."); s[cle].push(o); sauver(); f(); rendre(); } }, "Ajouter")]);
+    } }, "+ " + lab),
+  ];
+}
+function ajouterVenue(s) {
+  const o = { prof: null, txt: "" };
+  feuille("Venue d'eau", [champ("Profondeur (m)", o, "prof", { type: "num" }), champ("Précision", o, "txt", { ph: "ex. venue faible, perte de boue" })],
+    f => [h("button", { class: "prim", onclick: () => { if (o.prof == null) return toast("Indiquez la profondeur."); s.venues.push(o); sauver(); f(); rendre(); } }, "Ajouter")]);
+}
+function releverGps(s, maj) {
+  if (!navigator.geolocation) return toast("Position indisponible sur cet appareil.");
+  toast("Recherche de la position…", 2000);
+  navigator.geolocation.getCurrentPosition(p => {
+    s.lat = +p.coords.latitude.toFixed(7); s.lon = +p.coords.longitude.toFixed(7); s.prec = p.coords.accuracy;
+    sauver(); maj(); toast(p.coords.accuracy > 15 ? "Position relevée à ± " + Math.round(p.coords.accuracy) + " m : relevez à nouveau à découvert si possible." : "Position relevée.");
+  }, e => toast(e.code === 1 ? "Accès à la position refusé : autorisez-le dans Réglages > Confidentialité > Service de localisation." : "Position indisponible ici (" + e.message + ")."),
+  { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+}
+
+// ------------------------------------------------------------ couche de lithologie (description guidée NF EN ISO 14688-1)
+function phrase(o) {
+  const m = MAT[o.mat];
+  if (!m) return "";
+  const f = m.g === "f", acc = p => f ? p[1] : p[0];
+  let t = m.lib;
+  const sec = o.sec.map(k => SECONDAIRES.find(x => x[0] === k)).filter(Boolean);
+  const adj = sec.filter(x => !x[0].startsWith("à ")).map(acc), comp = sec.filter(x => x[0].startsWith("à ")).map(x => x[0]);
+  if (adj.length) t += " " + (o.peu ? "légèrement " : "") + adj.join(" et ");
+  if (comp.length) t += " " + comp.join(" et ");
+  const cols = o.coul.map(k => COULEURS.find(x => x[0] === k)).filter(Boolean).map(acc);
+  if (cols.length) t += " " + cols.join(" à ");
+  const etats = (ETATS[m.fam] || []).filter(x => x[0] === o.etat).map(acc);
+  const hum = HUMIDITES.filter(x => x[0] === o.hum).map(acc);
+  const fin = [...etats, ...hum];
+  if (fin.length) t += ", " + fin.join(", ");
+  if (o.plus) t += ", " + o.plus;
+  return t;
+}
+function motifDe(o) {
+  const sec = o.sec;
+  if (o.mat === "argile" && sec.includes("limoneux")) return "argile_limoneuse";
+  if (o.mat === "argile" && sec.includes("à galets")) return "argile_galets";
+  if (o.mat === "argile" && sec.includes("graveleux")) return "argile_graveleuse";
+  if (o.mat === "sable" && sec.includes("graveleux")) return "sable_graveleux";
+  return o.mat;
+}
+function editerCouche(s, i) {
+  const L = s.lithologie, c = i == null ? null : L[i];
+  const prec = i == null ? L[L.length - 1] : L[i - 1];
+  const o = c && c.guide ? JSON.parse(JSON.stringify(c.guide)) : { mat: null, sec: [], peu: false, coul: [], etat: null, hum: null, plus: "" };
+  const v = { de: c ? c.de : (prec ? prec.a : 0), a: c ? c.a : null, description: c ? c.description : "" };
+  let manuel = !!(c && !c.guide && c.description);
+  const zDesc = h("textarea", { rows: 3, oninput: () => { v.description = zDesc.value; manuel = true; } }); zDesc.value = v.description;
+  const zChips = h("div", { style: { display: "flex", flexDirection: "column", gap: "12px" } });
+  const majDesc = () => { if (!manuel) { v.description = phrase(o); zDesc.value = v.description; } };
+  const groupe = (titre, items, estOn, basculer) => h("div", { style: { display: "flex", flexDirection: "column", gap: "6px" } }, h("span", { class: "doux", style: { fontWeight: 600, fontSize: "12.5px" } }, titre),
+    h("div", { class: "chips" }, ...items.map(([k, l]) => h("button", { class: "chip" + (estOn(k) ? " on" : ""), "aria-pressed": estOn(k) ? "true" : "false", onclick: () => { basculer(k); dessiner(); majDesc(); } }, l))));
+  const dessiner = () => {
+    zChips.innerHTML = "";
+    zChips.append(groupe("Matériau principal", MATERIAUX.map(m => [m[0], m[1]]), k => o.mat === k, k => { o.mat = o.mat === k ? null : k; o.etat = null; }));
+    const m = MAT[o.mat];
+    if (!m) return;
+    zChips.append(groupe("Fraction secondaire", SECONDAIRES.filter(x => !(x[0].startsWith(m.lib.toLowerCase().slice(0, 4)))).map(x => [x[0], x[0]]).concat([["peu", "légèrement"]]),
+      k => k === "peu" ? o.peu : o.sec.includes(k), k => { if (k === "peu") o.peu = !o.peu; else o.sec = o.sec.includes(k) ? o.sec.filter(x => x !== k) : [...o.sec, k]; }));
+    zChips.append(groupe("Couleur (deux au plus)", COULEURS.map(x => [x[0], x[0]]), k => o.coul.includes(k), k => { o.coul = o.coul.includes(k) ? o.coul.filter(x => x !== k) : [...o.coul, k].slice(-2); }));
+    if ((ETATS[m.fam] || []).length) zChips.append(groupe(m.fam === "fin" ? "Consistance" : m.fam === "grenu" ? "Compacité" : "État de la roche", ETATS[m.fam].map(x => [x[0], x[0]]), k => o.etat === k, k => { o.etat = o.etat === k ? null : k; }));
+    zChips.append(groupe("Humidité", HUMIDITES.map(x => [x[0], x[0]]), k => o.hum === k, k => { o.hum = o.hum === k ? null : k; }));
+  };
+  dessiner();
+  const inPlus = h("input", { value: o.plus || "", placeholder: "ex. avec quelques débris de briques", oninput: () => { o.plus = inPlus.value; majDesc(); } });
+  feuille(i == null ? "Nouvelle couche" : "Couche " + fr(v.de, 2) + " – " + fr(v.a, 2) + " m", [
+    h("div", { class: "g2" }, champ("De (m)", v, "de", { type: "num" }), champ("À (m)", v, "a", { type: "num" })),
+    zChips, h("label", { class: "ch" }, "Complément", inPlus),
+    h("label", { class: "ch" }, h("span", { class: "ligne" }, "Description", h("span", { class: "esp" }), h("button", { class: "mini", type: "button", onclick: () => { manuel = false; majDesc(); } }, "Recomposer")), zDesc),
+    i != null ? h("button", { class: "dang", onclick: () => { L.splice(i, 1); sauver(); document.querySelector(".feuille").remove(); rendre(); } }, "Supprimer cette couche") : null,
+  ], f => [h("button", { class: "prim", onclick: () => {
+    if (v.a == null || v.de == null || v.a <= v.de) return toast("La base de la couche doit être sous son toit.");
+    const couche = { de: v.de, a: v.a, description: (v.description || "").trim(), motif: o.mat ? motifDe(o) : (c && c.motif) || null, guide: o.mat ? o : null };
+    if (i == null) L.push(couche); else L[i] = couche;
+    L.sort((x, y) => x.de - y.de);
+    if (s.prof == null || v.a > s.prof) s.prof = v.a;
+    sauver(); f(); rendre();
+  } }, "Enregistrer")]);
+}
+
+// ------------------------------------------------------------ photos
+function reduire(fichier, max = 1600) {
+  return new Promise((ok, ko) => {
+    const url = URL.createObjectURL(fichier), im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, max / Math.max(im.width, im.height)), cv = document.createElement("canvas");
+      cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k);
+      const cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url); ok({ data: cv.toDataURL("image/jpeg", 0.8), l: cv.width, h: cv.height });
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); ko(new Error("image illisible")); };
+    im.src = url;
+  });
+}
+function prendrePhoto(s, galerie) {
+  const inp = h("input", { type: "file", accept: "image/*", multiple: !!galerie, capture: galerie ? null : "environment", style: { display: "none" } });
+  inp.onchange = async () => {
+    const photoProf = ["SC", "PM", "T"].includes(s.type);
+    let z = s.photos.length ? Math.max(...s.photos.map(p => +p.a || 0)) : 0;
+    for (const f of inp.files) {
+      try {
+        const im = await reduire(f);
+        const p = { id: uid("ph"), nom: f.name || "photo.jpg", data: im.data, l: im.l, h: im.h, legende: "", quand: new Date().toISOString() };
+        if (photoProf) { p.de = z; p.a = null; }
+        s.photos.push(p);
+      } catch (e) { toast("Photo illisible."); }
+    }
+    inp.remove(); sauver(); rendre();
+    if (photoProf && inp.files.length === 1) editerPhoto(s, s.photos.length - 1, true);
+  };
+  document.body.append(inp); inp.click();
+}
+function editerPhoto(s, i, avecProf) {
+  const p = s.photos[i];
+  feuille("Photo " + (i + 1), [h("img", { src: p.data, alt: "", style: { borderRadius: "12px", maxHeight: "50vh", objectFit: "contain", background: "#000" } }),
+    avecProf ? h("div", { class: "g2" }, champ(s.type === "SC" ? "Caisse de (m)" : "De (m)", p, "de", { type: "num" }), champ("À (m)", p, "a", { type: "num" })) : null,
+    champ("Légende", p, "legende", { ph: "ex. fouille côté façade nord" }),
+    h("button", { class: "dang", onclick: () => { s.photos.splice(i, 1); sauver(); document.querySelector(".feuille").remove(); rendre(); } }, "Supprimer la photo")],
+  f => [h("button", { class: "prim", onclick: () => { sauver(); f(); rendre(); } }, "OK")]);
+}
+
+// ------------------------------------------------------------ piézomètre
+function cartePiezo(s) {
+  const pz = s.piezo;
+  const liste = h("div");
+  const red = () => {
+    liste.innerHTML = "";
+    const r = pz.releves.slice().sort((a, b) => (b.date + b.heure).localeCompare(a.date + a.heure));
+    if (!r.length) liste.append(h("div", { class: "vide" }, "Aucun relevé."));
+    r.forEach(x => liste.append(h("div", { class: "rel" }, h("span", {}, dateFr(x.date) + (x.heure ? " " + x.heure : "")),
+      h("b", { class: "num" }, x.sec ? "sec" : fr(x.mesure, 2) + " m" + (x.ref === "TN" ? " /TN" : " /tête")),
+      h("button", { class: "dang mini", "aria-label": "Retirer", onclick: () => { pz.releves.splice(pz.releves.indexOf(x), 1); sauver(); red(); } }, "×"))));
+  };
+  red();
+  return h("div", { class: "carte" },
+    h("div", { class: "g2" }, champ("Tête du tube / TN (m)", pz, "hauteur_tete", { type: "num", ph: "0,50" }), champ("Profondeur du tube (m)", pz, "prof_tube", { type: "num" })),
+    h("div", { class: "g2" }, champ("Crépine de (m)", pz, "crepine_de", { type: "num" }), champ("Crépine à (m)", pz, "crepine_a", { type: "num" })),
+    champ("Mesures prises depuis", pz, "ref", { type: "select", options: [["tete", "la tête du tube (sonde lumineuse)"], ["TN", "le terrain naturel"]] }),
+    h("button", { class: "vert", onclick: () => saisirReleve(s, red) }, "+ Relevé de niveau"), liste);
+}
+function saisirReleve(s, apres) {
+  const pz = s.piezo, o = { date: aujourdhui(), heure: maintenant(), mesure: null, sec: false, ref: pz.ref || "tete", commentaire: "" };
+  const cb = h("input", { type: "checkbox", style: { width: "22px", height: "22px" }, onchange: () => { o.sec = cb.checked; } });
+  const fermer = feuille("Relevé " + s.nom, [h("div", { class: "g2" }, champ("Date", o, "date", { type: "date" }), champ("Heure", o, "heure", { type: "time" })),
+    champ("Profondeur de l'eau depuis " + (o.ref === "TN" ? "le TN" : "la tête") + " (m)", o, "mesure", { type: "num", id: "mesure-pz" }),
+    h("label", { class: "ligne", style: { fontSize: "15px" } }, cb, "Piézomètre sec"), champ("Observation", o, "commentaire")],
+  f => [h("button", { class: "prim", onclick: () => { if (!o.sec && o.mesure == null) return toast("Indiquez le niveau ou cochez « sec »."); pz.releves.push(o); sauver(); f(); toast("Relevé enregistré."); apres && apres(); } }, "Enregistrer")]);
+  setTimeout(() => { const e = document.getElementById("mesure-pz"); if (e) e.focus(); }, 250);
+  return fermer;
+}
+function vueTournee() {
+  const d = D();
+  entete("Tournée piézométrique", d.numero || d.nom);
+  barre(h("button", { class: "prim", onclick: retour }, "Terminé"));
+  const pz = d.sondages.filter(s => s.type === "PZ" || s.piezo);
+  pz.forEach(s => { if (!s.piezo) s.piezo = piezoVide(); });
+  return [h("p", { class: "doux", style: { margin: "0 4px" } }, "Un relevé par ouvrage, daté d'aujourd'hui. Le dernier relevé est rappelé pour repérer une valeur aberrante."),
+    ...pz.map(s => {
+      const der = s.piezo.releves.slice().sort((a, b) => (b.date + b.heure).localeCompare(a.date + a.heure))[0];
+      const fait = der && der.date === aujourdhui();
+      const ligne = h("div", { class: "carte" }, h("div", { class: "ligne" }, h("span", { class: "badge", style: { background: TYPES[s.type][1] } }, s.type), h("h3", {}, s.nom), h("span", { class: "esp" }),
+        fait ? h("span", { class: "pill ok" }, "fait") : null),
+        h("div", { class: "doux" }, der ? "Dernier : " + dateFr(der.date) + " · " + (der.sec ? "sec" : fr(der.mesure, 2) + " m") : "Aucun relevé précédent."),
+        h("button", { class: fait ? "" : "vert", onclick: () => saisirReleve(s, () => rendre()) }, fait ? "Ajouter un autre relevé" : "Relever le niveau"));
+      return ligne;
+    })];
+}
+
+// ------------------------------------------------------------ export par mail
+function paquet(d) {
+  return { format: "HORUS-terrain", version: 1, app: "HORUS Terrain " + VERSION_APP, exporte_le: new Date().toISOString(),
+    dossier: { numero: d.numero, nom: d.nom, commune: d.commune, operateur: d.operateur, machine: d.machine },
+    sondages: d.sondages.map(s => ({ ...s, lithologie: s.lithologie.map(c => ({ de: c.de, a: c.a, description: c.description, motif: c.motif })) })) };
+}
+async function exporter(d) {
+  if (!d.sondages.length) return toast("Aucun sondage à envoyer.");
+  const json = JSON.stringify(paquet(d));
+  const taille = new Blob([json]).size;
+  const nom = "HORUS_terrain_" + (d.numero || "dossier").replace(/[^\w.-]+/g, "_") + "_" + aujourdhui().replace(/-/g, "") + ".json";
+  const fichier = new File([json], nom, { type: "application/json" });
+  const mo = (taille / 1048576).toFixed(1).replace(".", ",");
+  const envoyer = async fermer => {
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [fichier] })) {
+        await navigator.share({ files: [fichier], title: nom, text: "Saisies terrain " + (d.numero || "") + " " + (d.nom || "") + " - à importer dans HORUS (Importer…)." });
+      } else {
+        const dl = window.claude ? await window.claude.use("downloads") : null;
+        if (!dl) throw new Error("partage indisponible");
+        await dl.save({ filename: nom, data: fichier });
+      }
+      d.exporte = new Date().toISOString(); await ecrire(d); fermer(); rendre(); toast("Dossier prêt à envoyer.");
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+      toast("Envoi impossible ici : " + (e.message || e) + ".", 4000);
+    }
+  };
+  feuille("Envoyer à HORUS", [h("p", { style: { margin: 0 } }, d.sondages.length + " sondage(s), " + d.sondages.reduce((a, s) => a + s.photos.length, 0) + " photo(s) : fichier de " + mo + " Mo."),
+    h("p", { class: "doux", style: { margin: 0 } }, "Choisissez Mail dans le menu de partage, puis envoyez-le à votre adresse. Dans HORUS : ouvrez le dossier, « Importer… » et choisissez ce fichier. Les sondages sont créés ou complétés par leur nom."),
+    taille > 18 * 1048576 ? h("div", { class: "alerte" }, "Fichier volumineux : Mail proposera Mail Drop, ou envoyez en deux fois (moins de photos par envoi).") : null],
+  fermer => [h("button", { class: "prim", onclick: () => envoyer(fermer) }, "Partager…")]);
+}
+
+// ------------------------------------------------------------ démarrage
+(async () => {
+  await ouvrirBase();
+  try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) { /* facultatif */ }
+  DOSSIERS = await lireTout();
+  if (!DOSSIERS.length && !STORE.ok) DOSSIERS = [];
+  rendre();
+  try { if ("serviceWorker" in navigator && location.protocol === "https:" && !window.claude) navigator.serviceWorker.register("sw.js"); } catch (e) { /* hors PWA */ }
+})();
+</script>
+
+</body></html>

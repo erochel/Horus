@@ -1,0 +1,6 @@
+HORUS Terrain - application de saisie terrain (iPhone)
+
+Héberger ce dossier tel quel sur un site en https (GitHub Pages, Netlify, intranet...).
+Sur l'iPhone : ouvrir l'adresse dans Safari, bouton Partager, « Sur l'écran d'accueil ».
+L'application fonctionne ensuite hors connexion ; les saisies restent sur le téléphone.
+Envoi vers HORUS : dans un dossier, « Envoyer » -> Mail ; dans HORUS, « Importer... » le fichier .json reçu.
