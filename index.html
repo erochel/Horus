@@ -1,0 +1,1661 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="HORUS Terrain">
+<meta name="theme-color" content="#223558"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icone-180.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style>
+</head><body>
+<title>HORUS Terrain</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout : application mobile une colonne, barre de titre collante, actions principales en bas d'écran */
+:root{
+  --nuit:#223558; --vert:#A0C555; --vert-f:#6E9A2A;
+  --fond:#EEF1F6; --carte:#FFFFFF; --texte:#1B2333; --doux:#5F6B82; --ligne:#D6DCE7; --champ:#F6F8FB;
+  --rouge:#C83333; --bleu-eau:#1B8AC9; --ombre:0 1px 2px rgba(20,30,60,.08),0 3px 12px rgba(20,30,60,.06);
+  --titre:"Avenir Next","Century Gothic","Montserrat","Futura","Segoe UI",system-ui,sans-serif;
+  --corps:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --fond:#111826; --carte:#1A2335; --texte:#E7ECF5; --doux:#9AA6BD; --ligne:#2C3850; --champ:#212C42; --nuit:#2B4475;
+  --ombre:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}}
+:root[data-theme="dark"]{--fond:#111826; --carte:#1A2335; --texte:#E7ECF5; --doux:#9AA6BD; --ligne:#2C3850; --champ:#212C42; --nuit:#2B4475;
+  --ombre:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%}
+body{margin:0;background:var(--fond);color:var(--texte);font:16px/1.4 var(--corps)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:#223558}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:#223558;color:#fff;
+  padding-block:10px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));
+  display:flex;align-items:center;gap:10px;min-height:56px}
+header h1{font:700 18px/1.15 var(--titre);margin:0;flex:1;min-width:0;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+header h1 small{display:block;font:500 12px/1.3 var(--corps);color:#B9C6DD;letter-spacing:0}
+header .marque{width:30px;height:30px;flex:0 0 30px;border-radius:7px;background:#A0C555;display:grid;place-items:center;font:800 13px var(--titre);color:#223558}
+header button{background:rgba(255,255,255,.12);color:#fff;border:0;border-radius:10px;min-width:44px;height:40px;font-size:15px;padding:0 12px}
+main{padding-block:14px 120px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:14px;max-width:760px;margin:0 auto}
+.carte{background:var(--carte);border-radius:14px;box-shadow:var(--ombre);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+h2{font:700 13px/1.2 var(--titre);text-transform:uppercase;letter-spacing:1.1px;color:var(--doux);margin:4px 2px 0}
+h3{font:700 15px/1.2 var(--titre);margin:0;color:var(--texte)}
+.ligne{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.esp{flex:1}
+.doux{color:var(--doux);font-size:13.5px}
+label.ch{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600;color:var(--doux);min-width:0}
+input,select,textarea{font:16px var(--corps);color:var(--texte);background:var(--champ);border:1px solid var(--ligne);border-radius:10px;padding:10px 11px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:70px}
+input:focus,select:focus,textarea:focus{outline:2px solid #A0C555;outline-offset:0;border-color:transparent}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+button{font:600 15px var(--corps);border-radius:12px;border:1px solid var(--ligne);background:var(--carte);color:var(--texte);min-height:44px;padding:0 14px;cursor:pointer}
+button:focus-visible{outline:2px solid #A0C555;outline-offset:2px}
+button.prim{background:#223558;color:#fff;border-color:#223558}
+button.vert{background:#A0C555;color:#223558;border-color:#A0C555}
+button.dang{color:var(--rouge);border-color:transparent;background:transparent}
+button.plein{width:100%}
+button.mini{min-height:36px;font-size:14px;padding:0 10px;border-radius:9px}
+.liste{display:flex;flex-direction:column}
+.it{display:flex;align-items:center;gap:12px;padding:12px 4px;border-top:1px solid var(--ligne);min-width:0;cursor:pointer}
+.it:first-child{border-top:0}
+.it .t{flex:1;min-width:0}
+.it .t b{display:block;font-size:16px}
+.it .t span{display:block;color:var(--doux);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.it .fl{color:var(--doux);font-size:20px}
+.badge{font:700 12px var(--titre);letter-spacing:.4px;padding:5px 8px;border-radius:7px;color:#fff;min-width:42px;text-align:center;flex:0 0 auto}
+.pill{display:inline-block;font-size:12px;padding:3px 8px;border-radius:20px;background:var(--champ);color:var(--doux);border:1px solid var(--ligne)}
+.pill.ok{background:#E7F3D6;color:#43611A;border-color:#CFE5AD}
+.vide{color:var(--doux);text-align:center;padding:18px 8px;font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{border-radius:20px;min-height:36px;padding:0 12px;font-weight:500;font-size:14px;background:var(--champ)}
+.chip.on{background:#223558;color:#fff;border-color:#223558}
+.couche{display:grid;grid-template-columns:62px 1fr;gap:10px;align-items:stretch;padding:8px 0;border-top:1px solid var(--ligne);cursor:pointer}
+.couche:first-child{border-top:0}
+.couche .prof{font:600 13px var(--corps);font-variant-numeric:tabular-nums;color:var(--doux);display:flex;flex-direction:column;justify-content:space-between}
+.couche .desc{display:flex;gap:9px;align-items:stretch;min-width:0}
+.couche .desc i{width:14px;flex:0 0 14px;border-radius:3px}
+.couche .desc span{min-width:0;font-size:15px}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.photos figure{margin:0;position:relative}
+.photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:9px;display:block;background:var(--champ)}
+.photos figcaption{font-size:11.5px;color:var(--doux);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.barre{position:fixed;left:0;right:0;bottom:0;z-index:6;background:color-mix(in srgb,var(--carte) 92%,transparent);backdrop-filter:blur(10px);
+  border-top:1px solid var(--ligne);padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
+  padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:flex;gap:10px;justify-content:center}
+.barre>*{flex:1;max-width:360px}
+.feuille{position:fixed;inset:0;z-index:20;background:rgba(17,24,38,.5);display:flex;align-items:flex-end;justify-content:center}
+.feuille>div{background:var(--fond);width:100%;max-width:760px;max-height:94%;overflow:auto;border-radius:18px 18px 0 0;
+  padding-top:12px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:12px}
+.feuille .poignee{width:42px;height:5px;border-radius:3px;background:var(--ligne);align-self:center}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:30;background:#223558;color:#fff;
+  padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:var(--ombre);max-width:90%}
+.alerte{background:#FFF4DE;color:#7A4B00;border-radius:12px;padding:10px 12px;font-size:13.5px}
+.gps{font-variant-numeric:tabular-nums;font-size:14px}
+.num{font-variant-numeric:tabular-nums;text-align:right}
+.rel{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--ligne);font-variant-numeric:tabular-nums}
+.rel:first-child{border-top:0}
+@media (max-width:380px){.g3{grid-template-columns:1fr 1fr}}
+@media (prefers-reduced-motion: no-preference){.feuille>div{animation:monte .18s ease-out}@keyframes monte{from{transform:translateY(30px);opacity:.6}}}
+.themes{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.themes .chip{flex:0 0 auto}
+.carte-geo{position:relative;height:58vh;min-height:300px;overflow:hidden;border-radius:14px;background:#DDE3EC;touch-action:none;box-shadow:var(--ombre);user-select:none;-webkit-user-select:none}
+.carte-geo .calque{position:absolute;inset:0}
+.carte-geo .calque img{position:absolute;width:256px;height:256px;max-width:none;pointer-events:none}
+.rep-s,.rep-pt{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 0 0 1.5px #223558}
+.rep-s{background:#A0C555}
+.rep-pt{background:#E4572E;width:18px;height:18px;margin:-9px 0 0 -9px}
+.rep-nom{position:absolute;font:700 12px var(--corps);color:#223558;background:rgba(255,255,255,.85);padding:1px 5px;border-radius:5px;pointer-events:none}
+.cmd-carte{position:absolute;right:max(10px,env(safe-area-inset-right,0px));top:10px;display:flex;flex-direction:column;gap:6px}
+.cmd-carte button{width:44px;height:44px;padding:0;font-size:22px;border-radius:12px;background:#fff;color:#223558;border:0;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.leg-geol{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow:auto}
+.leg-geol div{display:grid;grid-template-columns:18px 54px 1fr;gap:8px;align-items:start;font-size:13px}
+.leg-geol i{width:18px;height:14px;border-radius:3px;margin-top:2px;border:1px solid rgba(0,0,0,.15)}
+.leg-geol span{min-width:0}
+.onglets{display:grid;grid-template-columns:1fr 1fr;background:var(--champ);border:1px solid var(--ligne);border-radius:12px;padding:3px;gap:3px}
+.onglets button{border:0;background:transparent;min-height:40px;border-radius:9px;color:var(--doux)}
+.onglets button.on{background:var(--carte);color:var(--texte);box-shadow:var(--ombre)}
+.semaine{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.semaine button{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0;min-height:58px;border-radius:10px;background:var(--champ)}
+.semaine small{font-size:11.5px;color:var(--doux);font-weight:600}
+.semaine b{font-size:17px;font-variant-numeric:tabular-nums}
+.semaine i{width:6px;height:6px;border-radius:50%;background:#A0C555}
+.semaine button.auj b{color:#6E9A2A}
+.semaine button.on{background:#223558;border-color:#223558}
+.semaine button.on small,.semaine button.on b{color:#fff}
+.creneau{display:grid;grid-template-columns:58px 1fr auto;gap:12px;align-items:start;padding:12px 2px;border-top:1px solid var(--ligne);cursor:pointer}
+.creneau:first-child{border-top:0}
+.creneau .heures{display:flex;flex-direction:column;font-variant-numeric:tabular-nums}
+.creneau .heures b{font-size:16px}
+.creneau .heures span{color:var(--doux);font-size:14px}
+.creneau .t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.creneau .t span{font-size:14px;overflow-wrap:anywhere}
+.itin{font-size:13.5px;font-weight:600;color:#1B8AC9;text-decoration:none;padding:6px 0}
+.lu{display:flex;gap:10px;align-items:flex-start;padding:8px;border-radius:12px;background:var(--carte)}
+.lu i{width:10px;align-self:stretch;border-radius:4px;flex:0 0 10px}
+.creneau{border-left:5px solid var(--cat,#A7B0BF);padding-left:10px;border-radius:4px}
+.cat-lib{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--doux);font-weight:700}
+.semaine .pts{display:flex;gap:2px;height:6px}
+.semaine .pts i{width:6px;height:6px;border-radius:50%}
+.leg-cat{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--doux)}
+.leg-cat span{display:inline-flex;align-items:center;gap:5px}
+.leg-cat i,.chip.cat i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.chip.cat{display:inline-flex;align-items:center;gap:6px}
+.rf-dessin{display:flex;flex-direction:column;gap:8px;overflow:hidden;border:1px solid var(--ligne);border-radius:12px;background:#fff;padding:6px}
+.rf-ligne{display:grid;grid-template-columns:18px minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end}
+.rf-ligne b{align-self:center;color:var(--doux)}
+button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;min-height:36px;padding:0 10px;border-radius:9px;font-size:13.5px}
+</style>
+
+<header>
+  <button id="b-retour" aria-label="Retour" hidden>‹</button>
+  <div class="marque" id="marque" aria-hidden="true">H</div>
+  <h1 id="titre">HORUS Terrain<small>Sondages · GINGER CEBTP</small></h1>
+  <button id="b-action" hidden></button>
+</header>
+<main id="main"></main>
+<div class="barre" id="barre" hidden></div>
+
+<script>
+"use strict";
+/* ============================================================ HORUS Terrain
+   Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
+const VERSION_APP = "1.7";
+const TYPES = {
+  SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
+  PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
+  CPT: ["Pénétromètre statique", "#7B1FA2"], RF: ["Reconnaissance de fondation", "#00897B"], PZ: ["Piézomètre", "#1B8AC9"],
+};
+/* matériaux : id de motif HORUS, genre, famille (fin, grenu, roche, autre), couleur du motif */
+const MATERIAUX = [
+  ["terre_vegetale", "Terre végétale", "f", "autre", "#6B4F2A"], ["remblai", "Remblai", "m", "autre", "#9E9E9E"],
+  ["argile", "Argile", "f", "fin", "#B98A5A"], ["limon", "Limon", "m", "fin", "#D8B98A"], ["sable", "Sable", "m", "grenu", "#E8D49B"],
+  ["grave", "Grave", "f", "grenu", "#BFA77A"], ["marne", "Marne", "f", "fin", "#B7B79A"], ["tourbe", "Tourbe", "f", "fin", "#3E3A2E"],
+  ["calcaire", "Calcaire", "m", "roche", "#D9D3C0"], ["gres", "Grès", "m", "roche", "#D2B48C"], ["flysch", "Flysch", "m", "roche", "#8E8B7E"],
+  ["roche_alteree", "Roche altérée", "f", "roche", "#A39D8F"], ["enrobe", "Enrobé", "m", "autre", "#4A4A4A"], ["beton", "Béton", "m", "autre", "#E8838C"],
+];
+const MAT = Object.fromEntries(MATERIAUX.map(m => [m[0], { id: m[0], lib: m[1], g: m[2], fam: m[3], c: m[4] }]));
+const COUL_MOTIF = { ...Object.fromEntries(MATERIAUX.map(m => [m[0], m[4]])), argile_limoneuse: "#C49A6C", argile_galets: "#A9784A", argile_graveleuse: "#7A5532", sable_graveleux: "#DCC488" };
+const SECONDAIRES = [["sableux", "sableuse"], ["limoneux", "limoneuse"], ["argileux", "argileuse"], ["graveleux", "graveleuse"], ["à galets", "à galets"], ["à blocs", "à blocs"], ["à débris", "à débris"]];
+const COULEURS = [["beige", "beige"], ["marron", "marron"], ["brun", "brune"], ["ocre", "ocre"], ["gris", "grise"], ["noir", "noire"], ["jaune", "jaune"], ["verdâtre", "verdâtre"], ["rougeâtre", "rougeâtre"], ["blanchâtre", "blanchâtre"], ["bariolé", "bariolée"]];
+const ETATS = {
+  fin: [["très mou", "très molle"], ["mou", "molle"], ["ferme", "ferme"], ["raide", "raide"], ["très raide", "très raide"], ["dur", "dure"]],
+  grenu: [["lâche", "lâche"], ["moyennement dense", "moyennement dense"], ["dense", "dense"], ["très dense", "très dense"]],
+  roche: [["très altéré", "très altérée"], ["altéré", "altérée"], ["fracturé", "fracturée"], ["sain", "saine"]],
+  autre: [],
+};
+const HUMIDITES = [["sec", "sèche"], ["humide", "humide"], ["très humide", "très humide"], ["saturé", "saturée"]];
+
+// ------------------------------------------------------------ outils
+const $ = s => document.querySelector(s);
+function h(tag, a, ...k) {
+  const e = document.createElement(tag);
+  for (const [n, v] of Object.entries(a || {})) {
+    if (v == null || v === false) continue;
+    if (n.startsWith("on")) e.addEventListener(n.slice(2), v);
+    else if (n === "style" && typeof v === "object") Object.assign(e.style, v);
+    else if (n in e && typeof v !== "string") e[n] = v;
+    else e.setAttribute(n, v === true ? "" : v);
+  }
+  for (const c of k.flat()) if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(c));
+  return e;
+}
+const uid = p => p + "_" + Math.random().toString(16).slice(2, 10);
+const num = v => { const x = parseFloat(String(v ?? "").replace(/\s/g, "").replace(",", ".")); return isFinite(x) ? x : null; };
+const fr = (x, n = 2) => x == null || isNaN(x) ? "–" : Number(x).toFixed(n).replace(".", ",");
+const aff = v => v == null ? "" : String(+(+v).toFixed(4)).replace(".", ",");
+const aujourdhui = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+const maintenant = () => { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+const dateFr = d => d ? d.split("-").reverse().join("/") : "";
+function toast(t, ms = 2600) { const e = h("div", { class: "toast", role: "status" }, t); document.body.append(e); setTimeout(() => e.remove(), ms); }
+
+// ------------------------------------------------------------ stockage (IndexedDB, repli en mémoire)
+const STORE = { db: null, memoire: new Map(), ok: false };
+function ouvrirBase() {
+  return new Promise(ok => {
+    try {
+      const r = indexedDB.open("horus-terrain", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("dossiers", { keyPath: "id" });
+      r.onsuccess = () => { STORE.db = r.result; STORE.ok = true; ok(); };
+      r.onerror = () => ok();
+    } catch (e) { ok(); }
+  });
+}
+function lireTout() {
+  return new Promise(ok => {
+    if (!STORE.db) return ok([...STORE.memoire.values()]);
+    try {
+      const r = STORE.db.transaction("dossiers").objectStore("dossiers").getAll();
+      r.onsuccess = () => ok(r.result || []); r.onerror = () => ok([...STORE.memoire.values()]);
+    } catch (e) { ok([...STORE.memoire.values()]); }
+  });
+}
+function ecrire(d) {
+  d.maj = new Date().toISOString();
+  STORE.memoire.set(d.id, d);
+  if (!STORE.db) return Promise.resolve();
+  return new Promise(ok => {
+    try { const t = STORE.db.transaction("dossiers", "readwrite"); t.objectStore("dossiers").put(d); t.oncomplete = ok; t.onerror = () => { toast("Enregistrement impossible sur cet appareil."); ok(); }; }
+    catch (e) { ok(); }
+  });
+}
+function effacer(id) {
+  STORE.memoire.delete(id);
+  if (!STORE.db) return Promise.resolve();
+  return new Promise(ok => { try { const t = STORE.db.transaction("dossiers", "readwrite"); t.objectStore("dossiers").delete(id); t.oncomplete = ok; t.onerror = ok; } catch (e) { ok(); } });
+}
+
+// ------------------------------------------------------------ état et navigation
+let DOSSIERS = [], PILE = [{ v: "accueil" }];
+const vue = () => PILE[PILE.length - 1];
+const D = () => DOSSIERS.find(d => d.id === vue().d);
+const S = () => { const d = D(); return d && d.sondages.find(s => s.id === vue().s); };
+function aller(v) { PILE.push(v); rendre(); window.scrollTo(0, 0); }
+function retour() { if (PILE.length > 1) PILE.pop(); rendre(); window.scrollTo(0, 0); }
+let minuterie = null;
+function sauver(d = D()) { if (!d) return; clearTimeout(minuterie); minuterie = setTimeout(() => ecrire(d), 300); }
+
+function entete(titre, sous, action) {
+  $("#titre").innerHTML = ""; $("#titre").append(titre, h("small", {}, sous || ""));
+  $("#b-retour").hidden = PILE.length <= 1;
+  $("#marque").hidden = PILE.length > 1;
+  const b = $("#b-action");
+  b.hidden = !action; b.textContent = action ? action[0] : ""; b.onclick = action ? action[1] : null;
+}
+function barre(...btns) { const b = $("#barre"); b.innerHTML = ""; const l = btns.filter(Boolean); b.hidden = !l.length; b.append(...l); }
+function rendre() {
+  const m = $("#main"); m.innerHTML = "";
+  const v = vue().v;
+  if (v === "accueil") m.append(...vueAccueil());
+  else if (v === "dossier") m.append(...vueDossier());
+  else if (v === "sondage") m.append(...vueSondage().filter(Boolean));
+  else if (v === "tournee") m.append(...vueTournee());
+  else if (v === "carte") m.append(...vueCarte().filter(Boolean));
+}
+$("#b-retour").onclick = retour;
+
+// ------------------------------------------------------------ champs
+function champ(lab, obj, cle, o = {}) {
+  let i;
+  if (o.type === "select") {
+    i = h("select", { id: o.id, onchange: () => { obj[cle] = i.value; sauver(); o.apres && o.apres(); } }, ...o.options.map(([v, l]) => h("option", { value: v, selected: String(obj[cle] ?? "") === v }, l)));
+  } else if (o.type === "textarea") {
+    i = h("textarea", { id: o.id, rows: o.rows || 3, placeholder: o.ph || "", oninput: () => { obj[cle] = i.value; sauver(); } }); i.value = obj[cle] || "";
+  } else {
+    const nb = o.type === "num";
+    i = h("input", { id: o.id, type: nb ? "text" : (o.type || "text"), inputmode: nb ? "decimal" : null, placeholder: o.ph || "", class: nb ? "num" : null, autocapitalize: o.caps || null });
+    i.value = nb ? aff(obj[cle]) : (obj[cle] ?? "");
+    i.addEventListener(nb ? "change" : "input", () => { obj[cle] = nb ? num(i.value) : i.value; if (nb) i.value = aff(obj[cle]); sauver(); o.apres && o.apres(); });
+  }
+  return h("label", { class: "ch" }, lab, i);
+}
+function feuille(titre, contenu, actions) {
+  const f = h("div", { class: "feuille", onclick: e => { if (e.target === f) f.remove(); } });
+  const fermer = () => f.remove();
+  f.append(h("div", { role: "dialog", "aria-label": titre }, h("div", { class: "poignee" }), h("h3", {}, titre), ...[].concat(contenu),
+    h("div", { class: "ligne" }, h("button", { onclick: fermer }, "Annuler"), h("span", { class: "esp" }), ...(actions ? actions(fermer) : []))));
+  document.body.append(f);
+  return fermer;
+}
+function confirmer(texte, oui, libelle = "Supprimer") {
+  feuille("Confirmer", h("p", {}, texte), fermer => [h("button", { class: "prim", style: { background: "var(--rouge)", borderColor: "var(--rouge)" }, onclick: () => { fermer(); oui(); } }, libelle)]);
+}
+
+// ------------------------------------------------------------ accueil
+function vueAccueil() {
+  if (ONGLET === "tech") return vueTech();
+  entete("HORUS Terrain", "Sondages · GINGER CEBTP");
+  barre(h("button", { class: "prim", onclick: nouveauDossier }, "+ Nouveau dossier"));
+  const out = [ongletsAccueil()];
+  if (!STORE.ok) out.push(h("div", { class: "alerte" }, "Le stockage de cet appareil est indisponible : vos saisies seront perdues à la fermeture. Exportez avant de quitter."));
+  const tri = DOSSIERS.slice().sort((a, b) => (b.maj || "").localeCompare(a.maj || ""));
+  out.push(h("h2", {}, "Dossiers sur ce téléphone"));
+  out.push(h("div", { class: "carte" }, tri.length ? h("div", { class: "liste" }, ...tri.map(d => {
+    const nbp = d.sondages.reduce((a, s) => a + s.photos.length, 0);
+    return h("div", { class: "it", onclick: () => aller({ v: "dossier", d: d.id }) },
+      h("div", { class: "t" }, h("b", {}, (d.numero ? d.numero + " · " : "") + (d.nom || "Dossier sans nom")),
+        h("span", {}, d.sondages.length + " sondage(s) · " + nbp + " photo(s)" + (d.commune ? " · " + d.commune : ""))),
+      d.exporte ? h("span", { class: "pill ok" }, "envoyé") : null, h("span", { class: "fl" }, "›"));
+  })) : h("div", { class: "vide" }, "Aucun dossier. Créez-en un pour commencer la campagne de sondages.",
+    h("div", { style: { marginTop: "12px" } }, h("button", { class: "mini", onclick: exemple }, "Ouvrir un dossier d'exemple")))));
+  out.push(h("p", { class: "doux", style: { margin: "4px 4px 0" } }, "Les saisies restent sur ce téléphone, même sans réseau. Envoyez le dossier par mail pour l'importer dans HORUS (bouton « Importer… »). Version " + VERSION_APP + "."));
+  return out;
+}
+async function exemple() {
+  const s1 = { id: uid("s"), nom: "SP1", type: "SP", date: aujourdhui(), operateur: "", machine: "M326", lat: 43.2951, lon: -0.3708, prec: 4, z: null, prof: 12, nappe: 3.4,
+    venues: [{ prof: 3.2, txt: "venue faible" }], outils: [{ de: 0, a: 12, txt: "Tricône Ø63" }], tubages: [{ de: 0, a: 3, txt: "LS Ø95" }], photos: [], commentaire: "Exemple : à supprimer.", piezo: null,
+    lithologie: [{ de: 0, a: 0.3, description: "Terre végétale marron, humide", motif: "terre_vegetale" }, { de: 0.3, a: 4.2, description: "Argile limoneuse beige à ocre, ferme, humide", motif: "argile_limoneuse" },
+      { de: 4.2, a: 12, description: "Sable graveleux gris, dense, saturé", motif: "sable_graveleux" }] };
+  const s2 = { ...JSON.parse(JSON.stringify(s1)), id: uid("s"), nom: "PZ1", type: "PZ", nappe: null, venues: [], piezo: { hauteur_tete: 0.5, prof_tube: 8, crepine_de: 2, crepine_a: 8, ref: "tete", releves: [{ date: aujourdhui(), heure: "09:30", mesure: 3.85, sec: false, ref: "tete", commentaire: "" }] } };
+  const d = { id: uid("dos"), numero: "EXEMPLE", nom: "Dossier d'exemple (à supprimer)", commune: "Pau", operateur: "", machine: "M326", cree: new Date().toISOString(), sondages: [s1, s2] };
+  DOSSIERS.push(d); await ecrire(d); aller({ v: "dossier", d: d.id });
+}
+function nouveauDossier() {
+  const d = { id: uid("dos"), numero: "", nom: "", commune: "", operateur: "", machine: "", cree: new Date().toISOString(), sondages: [] };
+  feuille("Nouveau dossier", [champ("Numéro d'affaire", d, "numero", { ph: "ex. SBA2.P.0095", caps: "characters" }), champ("Nom du dossier", d, "nom", { ph: "ex. Lotissement Les Chênes" }),
+    champ("Commune", d, "commune"), h("div", { class: "g2" }, champ("Opérateur", d, "operateur"), champ("Machine", d, "machine", { ph: "M326" }))],
+  fermer => [h("button", { class: "prim", onclick: async () => { DOSSIERS.push(d); await ecrire(d); fermer(); aller({ v: "dossier", d: d.id }); } }, "Créer")]);
+}
+
+// ------------------------------------------------------------ dossier
+function vueDossier() {
+  const d = D();
+  if (!d) { PILE = [{ v: "accueil" }]; return vueAccueil(); }
+  entete(d.numero || d.nom || "Dossier", d.numero ? d.nom : d.commune, ["Envoyer", () => exporter(d)]);
+  const pz = d.sondages.filter(s => s.type === "PZ" || s.piezo);
+  barre(h("button", { class: "prim", onclick: () => nouveauSondage(d) }, "+ Sondage"), pz.length ? h("button", { class: "vert", onclick: () => aller({ v: "tournee", d: d.id }) }, "Tournée piézo") : null);
+  const cartes = h("button", { class: "plein", onclick: () => aller({ v: "carte", d: d.id }) }, "Cartes du site : géologie, aléas, parcellaire");
+  const ordre = d.sondages.slice();
+  return [
+    cartes,
+    h("h2", {}, "Sondages"),
+    h("div", { class: "carte" }, ordre.length ? h("div", { class: "liste" }, ...ordre.map(s => h("div", { class: "it", onclick: () => aller({ v: "sondage", d: d.id, s: s.id }) },
+      h("span", { class: "badge", style: { background: TYPES[s.type][1] } }, s.type),
+      h("div", { class: "t" }, h("b", {}, s.nom), h("span", {}, resume(s))), h("span", { class: "fl" }, "›")))) : h("div", { class: "vide" }, "Aucun sondage. Touchez « + Sondage ».")),
+    h("h2", {}, "Dossier"),
+    h("div", { class: "carte" }, champ("Numéro d'affaire", d, "numero", { caps: "characters" }), champ("Nom", d, "nom"), champ("Commune", d, "commune"),
+      h("div", { class: "g2" }, champ("Opérateur", d, "operateur"), champ("Machine", d, "machine")),
+      d.exporte ? h("p", { class: "doux", style: { margin: 0 } }, "Dernier envoi : " + new Date(d.exporte).toLocaleString("fr-FR")) : null,
+      h("button", { class: "dang", onclick: () => confirmer("Supprimer le dossier « " + (d.numero || d.nom || "sans nom") + " » et toutes ses saisies de ce téléphone ?", async () => { DOSSIERS = DOSSIERS.filter(x => x !== d); await effacer(d.id); PILE = [{ v: "accueil" }]; rendre(); }) }, "Supprimer ce dossier du téléphone")),
+  ];
+}
+function resume(s) {
+  const p = [];
+  if (s.prof != null) p.push(fr(s.prof, 2) + " m");
+  if (s.lithologie.length) p.push(s.lithologie.length + " couche(s)");
+  if (s.photos.length) p.push(s.photos.length + " photo(s)");
+  if (s.lat != null) p.push("GPS");
+  if (s.piezo && s.piezo.releves.length) p.push(s.piezo.releves.length + " relevé(s) piézo");
+  return p.join(" · ") || TYPES[s.type][0];
+}
+function nouveauSondage(d) {
+  const derType = d.sondages.length ? d.sondages[d.sondages.length - 1].type : "SP";
+  const o = { type: derType, nom: "" };
+  const prochainNom = t => t + (d.sondages.filter(x => x.type === t).length + 1);
+  o.nom = prochainNom(o.type);
+  const inNom = h("input", { value: o.nom, autocapitalize: "characters", oninput: () => { o.nom = inNom.value; } });
+  const sel = h("select", { onchange: () => { o.type = sel.value; o.nom = prochainNom(o.type); inNom.value = o.nom; } }, ...Object.entries(TYPES).map(([k, v]) => h("option", { value: k, selected: k === o.type }, k + " - " + v[0])));
+  feuille("Nouveau sondage", [h("label", { class: "ch" }, "Type", sel), h("label", { class: "ch" }, "Nom", inNom)], fermer => [h("button", { class: "prim", onclick: async () => {
+    const nom = o.nom.trim();
+    if (!nom) return toast("Donnez un nom au sondage.");
+    if (d.sondages.some(x => x.nom.toLowerCase() === nom.toLowerCase())) return toast("Le sondage " + nom + " existe déjà.");
+    const s = { id: uid("s"), nom, type: o.type, date: aujourdhui(), operateur: d.operateur || "", machine: d.machine || "", lat: null, lon: null, prec: null, z: null, prof: null,
+      nappe: null, venues: [], lithologie: [], outils: [], tubages: [], photos: [], commentaire: "", piezo: o.type === "PZ" ? piezoVide() : null, rf: o.type === "RF" ? rfDefaut() : null };
+    d.sondages.push(s); await ecrire(d); fermer(); aller({ v: "sondage", d: d.id, s: s.id });
+  } }, "Créer")]);
+}
+const piezoVide = () => ({ hauteur_tete: null, prof_tube: null, crepine_de: null, crepine_a: null, ref: "tete", releves: [] });
+
+// ------------------------------------------------------------ sondage
+function vueSondage() {
+  const d = D(), s = S();
+  if (!s) { PILE.pop(); return vueDossier(); }
+  entete(s.nom, TYPES[s.type][0] + (d.numero ? " · " + d.numero : ""));
+  const photoProf = ["SC", "PM", "T"].includes(s.type);
+  barre(h("button", { class: "prim", onclick: () => editerCouche(s, null) }, "+ Couche"), h("button", { class: "vert", onclick: () => prendrePhoto(s) }, "Photo"));
+  const zoneGps = h("div", { class: "gps doux" });
+  const majGps = () => { zoneGps.textContent = s.lat == null ? "Position non relevée" : fr(Math.abs(s.lat), 6) + (s.lat < 0 ? " S, " : " N, ") + fr(Math.abs(s.lon), 6) + (s.lon < 0 ? " O" : " E") + (s.prec ? "  (± " + Math.round(s.prec) + " m)" : ""); };
+  majGps();
+  const out = [
+    h("div", { class: "carte" },
+      h("div", { class: "g2" }, champ("Nom", s, "nom", { caps: "characters", apres: () => entete(s.nom, TYPES[s.type][0]) }), champ("Type", s, "type", { type: "select", options: Object.entries(TYPES).map(([k, v]) => [k, k + " - " + v[0]]), apres: () => { if (s.type === "PZ" && !s.piezo) s.piezo = piezoVide(); if (s.type === "RF" && !s.rf) s.rf = rfDefaut(); rendre(); } })),
+      h("div", { class: "g2" }, champ("Date", s, "date", { type: "date" }), champ("Profondeur atteinte (m)", s, "prof", { type: "num" })),
+      h("div", { class: "g2" }, champ("Opérateur", s, "operateur"), champ("Machine", s, "machine")),
+      h("div", { class: "ligne" }, zoneGps, h("span", { class: "esp" }), h("button", { class: "mini", onclick: () => releverGps(s, majGps) }, s.lat == null ? "Relever la position" : "Relever à nouveau")),
+      h("button", { class: "mini", onclick: () => aller({ v: "carte", d: d.id, s: s.id }) }, "Cartes au sondage : géologie, sismique, argiles, nappe, inondation, parcelle"),
+      s.contexte ? h("div", { class: "doux", style: { fontSize: "13px" } }, ...Object.values(s.contexte).map(c => h("div", {}, "• " + c.texte))) : null,
+      champ("Cote du terrain Z (m NGF, si connue)", s, "z", { type: "num" })),
+    h("h2", {}, "Lithologie"),
+    h("div", { class: "carte" }, s.lithologie.length ? h("div", {}, ...s.lithologie.map((c, i) => {
+      return h("div", { class: "couche", onclick: () => editerCouche(s, i) },
+        h("div", { class: "prof" }, h("span", {}, fr(c.de, 2)), h("span", {}, fr(c.a, 2))),
+        h("div", { class: "desc" }, h("i", { style: { background: COUL_MOTIF[c.motif] || "var(--ligne)" } }), h("span", {}, c.description || "(sans description)")));
+    })) : h("div", { class: "vide" }, "Aucune couche. Touchez « + Couche » en bas de l'écran.")),
+    s.type === "RF" ? h("h2", {}, "Reconnaissance de fondation") : null,
+    s.type === "RF" ? carteRfTel(s) : null,
+    h("h2", {}, "Eau"),
+    h("div", { class: "carte" }, champ("Niveau d'eau en fin de sondage (m/TN)", s, "nappe", { type: "num", ph: "vide si pas d'eau" }),
+      ...s.venues.map((v, i) => h("div", { class: "ligne" }, h("span", { class: "pill" }, "Venue d'eau à " + fr(v.prof, 2) + " m"), h("span", { class: "doux" }, v.txt || ""), h("span", { class: "esp" }),
+        h("button", { class: "dang mini", "aria-label": "Retirer", onclick: () => { s.venues.splice(i, 1); sauver(); rendre(); } }, "×"))),
+      h("button", { class: "mini", onclick: () => ajouterVenue(s) }, "+ Venue d'eau")),
+    h("h2", {}, "Outils et tubages"),
+    h("div", { class: "carte" }, ...passes(s, "outils", "Outil", "Tricône Ø63"), ...passes(s, "tubages", "Tubage", "LS Ø95")),
+    h("h2", {}, "Photos"),
+    h("div", { class: "carte" }, s.photos.length ? h("div", { class: "photos" }, ...s.photos.map((p, i) => h("figure", { onclick: () => editerPhoto(s, i, photoProf) },
+      h("img", { src: p.data, alt: p.legende || "Photo " + (i + 1) }), h("figcaption", {}, photoProf && p.de != null ? fr(p.de, 2) + " – " + fr(p.a, 2) + " m" : (p.legende || "Photo " + (i + 1)))))) : h("div", { class: "vide" }, "Aucune photo."),
+      h("button", { class: "mini", onclick: () => prendrePhoto(s, true) }, "Ajouter depuis la photothèque")),
+  ];
+  if (s.piezo) out.push(h("h2", {}, "Piézomètre"), cartePiezo(s));
+  else if (s.type !== "PZ") out.push(h("button", { onclick: () => { s.piezo = piezoVide(); sauver(); rendre(); } }, "Ce sondage est équipé en piézomètre"));
+  out.push(h("h2", {}, "Observations"), h("div", { class: "carte" }, champ("Remarques (foreur, arrêt, refus, venues…)", s, "commentaire", { type: "textarea", rows: 4 })),
+    h("button", { class: "dang", onclick: () => confirmer("Supprimer le sondage " + s.nom + " ?", () => { d.sondages = d.sondages.filter(x => x !== s); sauver(d); retour(); }) }, "Supprimer ce sondage"));
+  return out;
+}
+function passes(s, cle, lab, ph) {
+  return [
+    ...s[cle].map((p, i) => h("div", { class: "ligne" }, h("span", { class: "pill" }, fr(p.de, 2) + " → " + fr(p.a, 2) + " m"), h("span", {}, p.txt), h("span", { class: "esp" }),
+      h("button", { class: "dang mini", "aria-label": "Retirer", onclick: () => { s[cle].splice(i, 1); sauver(); rendre(); } }, "×"))),
+    h("button", { class: "mini", onclick: () => {
+      const prec = s[cle][s[cle].length - 1];
+      const o = { de: prec ? prec.a : 0, a: s.prof, txt: prec ? prec.txt : "" };
+      feuille(lab, [h("div", { class: "g2" }, champ("De (m)", o, "de", { type: "num" }), champ("À (m)", o, "a", { type: "num" })), champ(lab, o, "txt", { ph })],
+        f => [h("button", { class: "prim", onclick: () => { if (!o.txt) return toast("Précisez le " + lab.toLowerCase() + "."); s[cle].push(o); sauver(); f(); rendre(); } }, "Ajouter")]);
+    } }, "+ " + lab),
+  ];
+}
+function ajouterVenue(s) {
+  const o = { prof: null, txt: "" };
+  feuille("Venue d'eau", [champ("Profondeur (m)", o, "prof", { type: "num" }), champ("Précision", o, "txt", { ph: "ex. venue faible, perte de boue" })],
+    f => [h("button", { class: "prim", onclick: () => { if (o.prof == null) return toast("Indiquez la profondeur."); s.venues.push(o); sauver(); f(); rendre(); } }, "Ajouter")]);
+}
+function releverGps(s, maj) {
+  if (!navigator.geolocation) return toast("Position indisponible sur cet appareil.");
+  toast("Recherche de la position…", 2000);
+  navigator.geolocation.getCurrentPosition(p => {
+    s.lat = +p.coords.latitude.toFixed(7); s.lon = +p.coords.longitude.toFixed(7); s.prec = p.coords.accuracy;
+    sauver(); maj(); toast(p.coords.accuracy > 15 ? "Position relevée à ± " + Math.round(p.coords.accuracy) + " m : relevez à nouveau à découvert si possible." : "Position relevée.");
+  }, e => toast(e.code === 1 ? "Accès à la position refusé : autorisez-le dans Réglages > Confidentialité > Service de localisation." : "Position indisponible ici (" + e.message + ")."),
+  { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+}
+
+// ------------------------------------------------------------ couche de lithologie (description guidée NF EN ISO 14688-1)
+function phrase(o) {
+  const m = MAT[o.mat];
+  if (!m) return "";
+  const f = m.g === "f", acc = p => f ? p[1] : p[0];
+  let t = m.lib;
+  const sec = o.sec.map(k => SECONDAIRES.find(x => x[0] === k)).filter(Boolean);
+  const adj = sec.filter(x => !x[0].startsWith("à ")).map(acc), comp = sec.filter(x => x[0].startsWith("à ")).map(x => x[0]);
+  if (adj.length) t += " " + (o.peu ? "légèrement " : "") + adj.join(" et ");
+  if (comp.length) t += " " + comp.join(" et ");
+  const cols = o.coul.map(k => COULEURS.find(x => x[0] === k)).filter(Boolean).map(acc);
+  if (cols.length) t += " " + cols.join(" à ");
+  const etats = (ETATS[m.fam] || []).filter(x => x[0] === o.etat).map(acc);
+  const hum = HUMIDITES.filter(x => x[0] === o.hum).map(acc);
+  const fin = [...etats, ...hum];
+  if (fin.length) t += ", " + fin.join(", ");
+  if (o.plus) t += ", " + o.plus;
+  return t;
+}
+function motifDe(o) {
+  const sec = o.sec;
+  if (o.mat === "argile" && sec.includes("limoneux")) return "argile_limoneuse";
+  if (o.mat === "argile" && sec.includes("à galets")) return "argile_galets";
+  if (o.mat === "argile" && sec.includes("graveleux")) return "argile_graveleuse";
+  if (o.mat === "sable" && sec.includes("graveleux")) return "sable_graveleux";
+  return o.mat;
+}
+function editerCouche(s, i) {
+  const L = s.lithologie, c = i == null ? null : L[i];
+  const prec = i == null ? L[L.length - 1] : L[i - 1];
+  const o = c && c.guide ? JSON.parse(JSON.stringify(c.guide)) : { mat: null, sec: [], peu: false, coul: [], etat: null, hum: null, plus: "" };
+  const v = { de: c ? c.de : (prec ? prec.a : 0), a: c ? c.a : null, description: c ? c.description : "" };
+  let manuel = !!(c && !c.guide && c.description);
+  const zDesc = h("textarea", { rows: 3, oninput: () => { v.description = zDesc.value; manuel = true; } }); zDesc.value = v.description;
+  const zChips = h("div", { style: { display: "flex", flexDirection: "column", gap: "12px" } });
+  const majDesc = () => { if (!manuel) { v.description = phrase(o); zDesc.value = v.description; } };
+  const groupe = (titre, items, estOn, basculer) => h("div", { style: { display: "flex", flexDirection: "column", gap: "6px" } }, h("span", { class: "doux", style: { fontWeight: 600, fontSize: "12.5px" } }, titre),
+    h("div", { class: "chips" }, ...items.map(([k, l]) => h("button", { class: "chip" + (estOn(k) ? " on" : ""), "aria-pressed": estOn(k) ? "true" : "false", onclick: () => { basculer(k); dessiner(); majDesc(); } }, l))));
+  const dessiner = () => {
+    zChips.innerHTML = "";
+    zChips.append(groupe("Matériau principal", MATERIAUX.map(m => [m[0], m[1]]), k => o.mat === k, k => { o.mat = o.mat === k ? null : k; o.etat = null; }));
+    const m = MAT[o.mat];
+    if (!m) return;
+    zChips.append(groupe("Fraction secondaire", SECONDAIRES.filter(x => !(x[0].startsWith(m.lib.toLowerCase().slice(0, 4)))).map(x => [x[0], x[0]]).concat([["peu", "légèrement"]]),
+      k => k === "peu" ? o.peu : o.sec.includes(k), k => { if (k === "peu") o.peu = !o.peu; else o.sec = o.sec.includes(k) ? o.sec.filter(x => x !== k) : [...o.sec, k]; }));
+    zChips.append(groupe("Couleur (deux au plus)", COULEURS.map(x => [x[0], x[0]]), k => o.coul.includes(k), k => { o.coul = o.coul.includes(k) ? o.coul.filter(x => x !== k) : [...o.coul, k].slice(-2); }));
+    if ((ETATS[m.fam] || []).length) zChips.append(groupe(m.fam === "fin" ? "Consistance" : m.fam === "grenu" ? "Compacité" : "État de la roche", ETATS[m.fam].map(x => [x[0], x[0]]), k => o.etat === k, k => { o.etat = o.etat === k ? null : k; }));
+    zChips.append(groupe("Humidité", HUMIDITES.map(x => [x[0], x[0]]), k => o.hum === k, k => { o.hum = o.hum === k ? null : k; }));
+  };
+  dessiner();
+  const inPlus = h("input", { value: o.plus || "", placeholder: "ex. avec quelques débris de briques", oninput: () => { o.plus = inPlus.value; majDesc(); } });
+  feuille(i == null ? "Nouvelle couche" : "Couche " + fr(v.de, 2) + " – " + fr(v.a, 2) + " m", [
+    h("div", { class: "g2" }, champ("De (m)", v, "de", { type: "num" }), champ("À (m)", v, "a", { type: "num" })),
+    zChips, h("label", { class: "ch" }, "Complément", inPlus),
+    h("label", { class: "ch" }, h("span", { class: "ligne" }, "Description", h("span", { class: "esp" }), h("button", { class: "mini", type: "button", onclick: () => { manuel = false; majDesc(); } }, "Recomposer")), zDesc),
+    i != null ? h("button", { class: "dang", onclick: () => { L.splice(i, 1); sauver(); document.querySelector(".feuille").remove(); rendre(); } }, "Supprimer cette couche") : null,
+  ], f => [h("button", { class: "prim", onclick: () => {
+    if (v.a == null || v.de == null || v.a <= v.de) return toast("La base de la couche doit être sous son toit.");
+    const couche = { de: v.de, a: v.a, description: (v.description || "").trim(), motif: o.mat ? motifDe(o) : (c && c.motif) || null, guide: o.mat ? o : null };
+    if (i == null) L.push(couche); else L[i] = couche;
+    L.sort((x, y) => x.de - y.de);
+    if (s.prof == null || v.a > s.prof) s.prof = v.a;
+    sauver(); f(); rendre();
+  } }, "Enregistrer")]);
+}
+
+// ------------------------------------------------------------ photos
+function reduire(fichier, max = 1600) {
+  return new Promise((ok, ko) => {
+    const url = URL.createObjectURL(fichier), im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, max / Math.max(im.width, im.height)), cv = document.createElement("canvas");
+      cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k);
+      const cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url); ok({ data: cv.toDataURL("image/jpeg", 0.8), l: cv.width, h: cv.height });
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); ko(new Error("image illisible")); };
+    im.src = url;
+  });
+}
+function prendrePhoto(s, galerie) {
+  const inp = h("input", { type: "file", accept: "image/*", multiple: !!galerie, capture: galerie ? null : "environment", style: { display: "none" } });
+  inp.onchange = async () => {
+    const photoProf = ["SC", "PM", "T"].includes(s.type);
+    let z = s.photos.length ? Math.max(...s.photos.map(p => +p.a || 0)) : 0;
+    for (const f of inp.files) {
+      try {
+        const im = await reduire(f);
+        const p = { id: uid("ph"), nom: f.name || "photo.jpg", data: im.data, l: im.l, h: im.h, legende: "", quand: new Date().toISOString() };
+        if (photoProf) { p.de = z; p.a = null; }
+        s.photos.push(p);
+      } catch (e) { toast("Photo illisible."); }
+    }
+    inp.remove(); sauver(); rendre();
+    if (photoProf && inp.files.length === 1) editerPhoto(s, s.photos.length - 1, true);
+  };
+  document.body.append(inp); inp.click();
+}
+function editerPhoto(s, i, avecProf) {
+  const p = s.photos[i];
+  feuille("Photo " + (i + 1), [h("img", { src: p.data, alt: "", style: { borderRadius: "12px", maxHeight: "50vh", objectFit: "contain", background: "#000" } }),
+    avecProf ? h("div", { class: "g2" }, champ(s.type === "SC" ? "Caisse de (m)" : "De (m)", p, "de", { type: "num" }), champ("À (m)", p, "a", { type: "num" })) : null,
+    champ("Légende", p, "legende", { ph: "ex. fouille côté façade nord" }),
+    h("button", { class: "dang", onclick: () => { s.photos.splice(i, 1); sauver(); document.querySelector(".feuille").remove(); rendre(); } }, "Supprimer la photo")],
+  f => [h("button", { class: "prim", onclick: () => { sauver(); f(); rendre(); } }, "OK")]);
+}
+
+// ------------------------------------------------------------ piézomètre
+function cartePiezo(s) {
+  const pz = s.piezo;
+  const liste = h("div");
+  const red = () => {
+    liste.innerHTML = "";
+    const r = pz.releves.slice().sort((a, b) => (b.date + b.heure).localeCompare(a.date + a.heure));
+    if (!r.length) liste.append(h("div", { class: "vide" }, "Aucun relevé."));
+    r.forEach(x => liste.append(h("div", { class: "rel" }, h("span", {}, dateFr(x.date) + (x.heure ? " " + x.heure : "")),
+      h("b", { class: "num" }, x.sec ? "sec" : fr(x.mesure, 2) + " m" + (x.ref === "TN" ? " /TN" : " /tête")),
+      h("button", { class: "dang mini", "aria-label": "Retirer", onclick: () => { pz.releves.splice(pz.releves.indexOf(x), 1); sauver(); red(); } }, "×"))));
+  };
+  red();
+  return h("div", { class: "carte" },
+    h("div", { class: "g2" }, champ("Tête du tube / TN (m)", pz, "hauteur_tete", { type: "num", ph: "0,50" }), champ("Profondeur du tube (m)", pz, "prof_tube", { type: "num" })),
+    h("div", { class: "g2" }, champ("Crépine de (m)", pz, "crepine_de", { type: "num" }), champ("Crépine à (m)", pz, "crepine_a", { type: "num" })),
+    champ("Mesures prises depuis", pz, "ref", { type: "select", options: [["tete", "la tête du tube (sonde lumineuse)"], ["TN", "le terrain naturel"]] }),
+    h("button", { class: "vert", onclick: () => saisirReleve(s, red) }, "+ Relevé de niveau"), liste);
+}
+function saisirReleve(s, apres) {
+  const pz = s.piezo, o = { date: aujourdhui(), heure: maintenant(), mesure: null, sec: false, ref: pz.ref || "tete", commentaire: "" };
+  const cb = h("input", { type: "checkbox", style: { width: "22px", height: "22px" }, onchange: () => { o.sec = cb.checked; } });
+  const fermer = feuille("Relevé " + s.nom, [h("div", { class: "g2" }, champ("Date", o, "date", { type: "date" }), champ("Heure", o, "heure", { type: "time" })),
+    champ("Profondeur de l'eau depuis " + (o.ref === "TN" ? "le TN" : "la tête") + " (m)", o, "mesure", { type: "num", id: "mesure-pz" }),
+    h("label", { class: "ligne", style: { fontSize: "15px" } }, cb, "Piézomètre sec"), champ("Observation", o, "commentaire")],
+  f => [h("button", { class: "prim", onclick: () => { if (!o.sec && o.mesure == null) return toast("Indiquez le niveau ou cochez « sec »."); pz.releves.push(o); sauver(); f(); toast("Relevé enregistré."); apres && apres(); } }, "Enregistrer")]);
+  setTimeout(() => { const e = document.getElementById("mesure-pz"); if (e) e.focus(); }, 250);
+  return fermer;
+}
+function vueTournee() {
+  const d = D();
+  entete("Tournée piézométrique", d.numero || d.nom);
+  barre(h("button", { class: "prim", onclick: retour }, "Terminé"));
+  const pz = d.sondages.filter(s => s.type === "PZ" || s.piezo);
+  pz.forEach(s => { if (!s.piezo) s.piezo = piezoVide(); });
+  return [h("p", { class: "doux", style: { margin: "0 4px" } }, "Un relevé par ouvrage, daté d'aujourd'hui. Le dernier relevé est rappelé pour repérer une valeur aberrante."),
+    ...pz.map(s => {
+      const der = s.piezo.releves.slice().sort((a, b) => (b.date + b.heure).localeCompare(a.date + a.heure))[0];
+      const fait = der && der.date === aujourdhui();
+      const ligne = h("div", { class: "carte" }, h("div", { class: "ligne" }, h("span", { class: "badge", style: { background: TYPES[s.type][1] } }, s.type), h("h3", {}, s.nom), h("span", { class: "esp" }),
+        fait ? h("span", { class: "pill ok" }, "fait") : null),
+        h("div", { class: "doux" }, der ? "Dernier : " + dateFr(der.date) + " · " + (der.sec ? "sec" : fr(der.mesure, 2) + " m") : "Aucun relevé précédent."),
+        h("button", { class: fait ? "" : "vert", onclick: () => saisirReleve(s, () => rendre()) }, fait ? "Ajouter un autre relevé" : "Relever le niveau"));
+      return ligne;
+    })];
+}
+
+// ------------------------------------------------------------ reconnaissance de fondation (mêmes modèles et même tracé que HORUS sur PC)
+const RF_NOIR = "#1a1a1a", RF_COTE = "#3B7DD8", RF_ROUGE = "#D32F2F";
+const MODELES_RF = [["fondation", "Fondation sous mur (redans)"], ["dalle", "Mur sur dalle sur fondation / longrine"], ["soutenement", "Mur de soutènement en L"], ["simple", "Fouille seule (sans ouvrage)"]];
+const rfDefaut = () => ({ modele: "fondation", mur: "Mur de pierre + enduit ép. 15 mm", mur_ep: 0.3, toit: 0.4, redans: [{ debord: 0.1, hauteur: 0.8 }], base_atteinte: true, fouille: null,
+  dalle_toit: 0, dalle_ep: 0.2, dalle_debord: null, longrine: "Longrine", longrine_debord: null, longrine_h: 0.5,
+  h_vue: 2.0, base_sous_tn: 0.1, semelle_ep: 0.2, talon: 1.0, patin: 0, voile_ep: 0.08, tn_amont: "T.N amont", tn_amont_h: 0.2, face: true,
+  module: "Module béton", module_l: 2.5, module_h: 2.0, fissures: [], assise: "", observations: "" });
+const rfF = (v, d = null) => { const x = parseFloat(String(v ?? "").replace(",", ".")); return isFinite(x) ? x : d; };
+const rfM = (v, n = 2, signe = "") => signe + Number(v).toFixed(n).replace(".", ",") + " m";
+const rfWrap = (t, n) => { const out = []; let l = ""; for (const w of String(t || "").split(/\s+/)) { if (l && (l + " " + w).length > n) { out.push(l); l = w; } else l = l ? l + " " + w : w; } if (l) out.push(l); return out; };
+/* petit traceur : coordonnées en mètres (y vers le haut), rendu SVG à l'échelle */
+function rfTraceur() {
+  const it = [];
+  const T = {
+    it,
+    plot: (xs, ys, o = {}) => it.push({ k: "l", p: xs.map((x, i) => [x, ys[i]]), ...o }),
+    poly: (p, o = {}) => it.push({ k: "p", p, ...o }),
+    text: (x, y, s, o = {}) => it.push({ k: "t", x, y, s: String(s), ...o }),
+    bez: (a, b, c, d, o = {}) => it.push({ k: "b", p: [a, b, c, d], ...o }),
+    cote: (p1, p2, s, o = {}) => {
+      it.push({ k: "l", p: [p1, p2], c: o.c || RF_COTE, lw: .8, fl: 2 });
+      const xm = (p1[0] + p2[0]) / 2, ym = (p1[1] + p2[1]) / 2, dec = o.decal || 0;
+      if (!s) return;
+      if (Math.abs(p1[0] - p2[0]) < 1e-9) T.text(xm + dec, ym, " " + s + " ", { ha: "left", va: "center", fs: o.fs, c: o.c && o.c !== RF_COTE ? o.c : RF_NOIR });
+      else T.text(xm, ym + dec, s, { ha: "center", va: "bottom", fs: o.fs, c: o.c && o.c !== RF_COTE ? o.c : RF_NOIR });
+    },
+    fleche: (texte, xy, xyt, o = {}) => { it.push({ k: "l", p: [xyt, xy], c: o.c || RF_COTE, lw: .7, fl: 1 }); T.text(xyt[0], xyt[1], texte, { ha: o.ha || "left", va: o.va || "bottom", fs: o.fs, c: o.ct || RF_NOIR }); },
+    vague: (x1, x2, y, amp, n = 3, pts = 60) => { const xs = [], ys = []; for (let i = 0; i <= pts; i++) { const x = x1 + (x2 - x1) * i / pts; xs.push(x); ys.push(y + amp * Math.sin(2 * Math.PI * n * (x - x1) / (x2 - x1)) * (.6 + .4 * Math.sin(i))); } return [xs, ys]; },
+  };
+  return T;
+}
+function rfSvg(T, ext, titre, Wpt = 504, Hpt = 300) {
+  const [xa, xb] = ext[0], [ya, yb] = ext[1], mx = (xb - xa) * .02, my = (yb - ya) * .02;
+  const x0 = xa - mx, x1 = xb + mx, y0 = ya - my, y1 = yb + my, top = 18;
+  const k = Math.min(Wpt / (x1 - x0), (Hpt - top) / (y1 - y0)), ox = (Wpt - (x1 - x0) * k) / 2, oy = top + (Hpt - top - (y1 - y0) * k) / 2;
+  const X = x => +(ox + (x - x0) * k).toFixed(2), Y = y => +(oy + (y1 - y) * k).toFixed(2);
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const out = [];
+  for (const e of T.it) {
+    const lw = e.lw ?? 1, dash = e.dash ? ' stroke-dasharray="' + e.dash.map(v => v * lw).join(" ") + '"' : "";
+    if (e.k === "l") out.push('<polyline fill="none" stroke="' + (e.c || RF_NOIR) + '" stroke-width="' + lw + '" stroke-linejoin="miter"' + dash
+      + (e.fl ? ' marker-end="url(#' + (e.c === RF_ROUGE ? "fr" : "fc") + ')"' + (e.fl === 2 ? ' marker-start="url(#' + (e.c === RF_ROUGE ? "fr" : "fc") + ')"' : "") : "")
+      + ' points="' + e.p.map(p => X(p[0]) + "," + Y(p[1])).join(" ") + '"/>');
+    else if (e.k === "b") out.push('<path fill="none" stroke="' + (e.c || RF_NOIR) + '" stroke-width="' + lw + '" d="M' + X(e.p[0][0]) + " " + Y(e.p[0][1]) + " C" + e.p.slice(1).map(p => X(p[0]) + " " + Y(p[1])).join(" ") + '"/>');
+    else if (e.k === "p") {
+      const pts = e.p.map(p => X(p[0]) + "," + Y(p[1])).join(" ");
+      out.push('<polygon points="' + pts + '" fill="' + (e.fc || "none") + '" stroke="none"/>');
+      if (e.hatch) out.push('<polygon points="' + pts + '" fill="url(#' + e.hatch + ')" stroke="none"/>');
+      if (e.ec) out.push('<polygon points="' + pts + '" fill="none" stroke="' + e.ec + '" stroke-width="' + lw + '"/>');
+    } else if (e.k === "t") {
+      const fs = e.fs || 7.2, L = e.s.split("\n"), lh = fs * 1.18;
+      let y = Y(e.y);
+      if (e.va === "center") y -= (L.length - 1) * lh / 2; else if (e.va === "bottom") y -= (L.length - 1) * lh;
+      const base = e.va === "top" ? fs * .8 : e.va === "bottom" ? -fs * .15 : fs * .35;
+      const anc = e.ha === "right" ? "end" : e.ha === "center" ? "middle" : "start";
+      if (e.bg) { const w = Math.max(...L.map(l => l.length)) * fs * .55 + 2, x = X(e.x); out.push('<rect x="' + (anc === "end" ? x - w : anc === "middle" ? x - w / 2 : x) + '" y="' + (y + base - fs * .85) + '" width="' + w + '" height="' + (lh * L.length) + '" fill="' + e.bg + '"/>'); }
+      out.push('<text x="' + X(e.x) + '" y="' + (y + base).toFixed(2) + '" font-size="' + fs + '" text-anchor="' + anc + '" fill="' + (e.c || RF_NOIR) + '"' + (e.b ? ' font-weight="700"' : "") + (e.i ? ' font-style="italic"' : "") + ">"
+        + L.map((l, i) => '<tspan x="' + X(e.x) + '" dy="' + (i ? lh : 0) + '">' + esc(l) + "</tspan>").join("") + "</text>");
+    }
+  }
+  const defs = '<defs><marker id="fc" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="' + RF_COTE + '"/></marker>'
+    + '<marker id="fr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="' + RF_ROUGE + '"/></marker>'
+    + '<pattern id="h45" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#555" stroke-width=".6"/></pattern>'
+    + '<pattern id="hbleu" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#9CC3E6" stroke-width=".8"/></pattern>'
+    + '<pattern id="pts" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r=".55" fill="#777"/></pattern>'
+    + '<linearGradient id="gface" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#F7F7F7"/><stop offset="1" stop-color="#727272"/></linearGradient></defs>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + Wpt + " " + Hpt + '" font-family="Arial, Helvetica, sans-serif" style="width:100%;height:auto;background:#fff;border-radius:10px">'
+    + defs + '<text x="' + Wpt / 2 + '" y="12" font-size="8.2" font-weight="700" text-anchor="middle" fill="' + RF_NOIR + '">' + titre + "</text>" + out.join("") + "</svg>";
+}
+function rfCouches(T, lit, xg, xd, xlab, fs, echelle) {
+  T.text(xlab, 0, rfM(0), { ha: "left", va: "center", fs, b: 1, i: 1 });
+  for (const c of lit) {
+    const de = rfF(c.de, 0), a = rfF(c.a);
+    if (a == null) continue;
+    T.plot([xg, xd], [-a, -a], { lw: .8 });
+    T.text(xlab, -a, rfM(a, 2, "- "), { ha: "left", va: "center", fs, b: 1, i: 1 });
+    const desc = c.description || (MAT[c.motif] ? MAT[c.motif].lib : "");
+    const ep = (a - de) / Math.max(echelle, 1e-9), larg = ep < .08 ? 60 : ep < .2 ? 34 : 24;
+    T.text((xg + xd) / 2, -(de + a) / 2, rfWrap(desc, larg).join("\n"), { ha: "center", va: "center", fs: fs - (ep < .08 ? 1.2 : .4), c: "#333" });
+  }
+}
+function rfFondation(T, r, lit, fs) {
+  const toit = rfF(r.toit, 0) || 0;
+  const redans = (r.redans || []).filter(x => (x.hauteur !== null && x.hauteur !== "" && x.hauteur !== undefined) || (x.debord !== null && x.debord !== "" && x.debord !== undefined));
+  const base = toit + redans.reduce((s, x) => s + (rfF(x.hauteur) || .3), 0);
+  const zLit = Math.max(0, ...lit.map(c => rfF(c.a, 0)));
+  const fouille = rfF(r.fouille) || Math.max(base, zLit) || 1;
+  const U = Math.max(fouille, base, zLit, .5), ep = rfF(r.mur_ep), ew = Math.max(ep || .2, .1 * U), haut = .42 * U;
+  let x = 0, z = toit; const face = [[0, haut], [0, -toit]], marches = [];
+  for (const rd of redans) {
+    const d = rfF(rd.debord), dd = (d || 0) > 0 ? Math.max(d, .06 * U) : (d == null ? .07 * U : 0), hh = rfF(rd.hauteur) || .3;
+    if (dd) { face.push([x + dd, -z]); marches.push([x, x + dd, z, d]); }
+    x += dd; face.push([x, -(z + hh)]); z += hh;
+  }
+  T.plot(face.map(p => p[0]), face.map(p => p[1]), { lw: 1.5 });
+  T.plot([-ew, -ew], [haut, toit > 0 ? -Math.min(toit, .5 * U) : 0], { lw: 1.5 });
+  const xp = x, atteinte = r.base_atteinte !== false;
+  if (redans.length && atteinte) T.plot([xp, xp - .04 * U], [-base, -base], { lw: 1.5 });
+  else if (redans.length) { const zz = -base; T.plot([xp, xp + .025 * U, xp - .025 * U, xp], [zz, zz - .02 * U, zz - .045 * U, zz - .065 * U], { lw: 1 }); }
+  T.plot([xp, xp], [-fouille - .02 * U, -fouille - .08 * U], { lw: .7, dash: [3, 2] });
+  const W = .55 * U, xt = xp + W;
+  T.bez([xt, 0], [xt, -.8 * fouille], [xp + .25 * W, -fouille], [xp, -fouille], { lw: 1.2 });
+  T.plot([0, xt], [0, 0], { lw: .8, dash: [4, 3] });
+  const xd = xt + .95 * U;
+  T.plot([xt, xd], [0, 0], { lw: 1.1 });
+  T.plot([-ew - .25 * U, xd], [-fouille, -fouille], { lw: .9, dash: [5, 3] });
+  const xl = xd + .04 * U;
+  T.text(xl, .09 * U, "Profondeur / TN", { fs, b: 1, va: "bottom" });
+  rfCouches(T, lit, xt, xd, xl, fs, U * 1.4);
+  if (!lit.some(c => Math.abs(rfF(c.a, -1) - fouille) < 1e-6)) T.text(xl, -fouille, rfM(fouille, 2, "- "), { ha: "left", va: "center", fs, b: 1, i: 1 });
+  T.text(-ew - .26 * U, -fouille, rfM(fouille, 2, "- "), { ha: "right", va: "center", fs, b: 1, i: 1 });
+  if (ep) T.cote([-ew, haut + .07 * U], [0, haut + .07 * U], rfM(ep), { decal: .01 * U, fs });
+  else T.text(-ew / 2, haut + .05 * U, "ép. ?", { ha: "center", va: "bottom", fs: fs - .6, c: "#666" });
+  for (const [a0, a1, zz, d] of marches) { T.cote([a0, -zz - .04 * U], [a1, -zz - .04 * U], ""); T.text(a0 - .01 * U, -zz - .04 * U, d == null ? "?" : rfM(d), { ha: "right", va: "center", fs, bg: "#fff" }); }
+  const xc = xp + .08 * U;
+  if (toit > 0) T.cote([xc, 0], [xc, -toit], rfM(toit), { decal: .005 * U, fs });
+  z = toit;
+  redans.forEach((rd, k) => { const hv = rfF(rd.hauteur), hh = hv || .3, dern = k === redans.length - 1;
+    T.cote([xc, -z], [xc, -(z + hh)], hv == null ? "?" : (dern && !atteinte ? "> " : "") + rfM(hv), { decal: .005 * U, fs }); z += hh; });
+  if (r.mur) T.text(-ew - .04 * U, haut * .7, rfWrap(r.mur, 16).join("\n"), { ha: "right", va: "top", fs: fs - .4 });
+  if (redans.length) T.text(-ew - .04 * U, -(toit + base) / 2, "Fondation", { ha: "right", va: "center", fs: fs - .4 });
+  return [[-ew - .6 * U, xd + .32 * U], [-fouille - .12 * U, haut + .16 * U]];
+}
+function rfDalle(T, r, lit, fs) {
+  const zt = rfF(r.dalle_toit, 0) || 0, edv = rfF(r.dalle_ep), hlv = rfF(r.longrine_h), zLit = Math.max(0, ...lit.map(c => rfF(c.a, 0)));
+  const ed = edv || .2, hl = hlv || .4, base = zt + ed + hl, fouille = rfF(r.fouille) || Math.max(base, zLit) || 1;
+  const U = Math.max(fouille, base, zLit, .6), ep = rfF(r.mur_ep), ew = Math.max(ep || .2, .1 * U), edd = Math.max(ed, .05 * U), hld = hl, haut = .42 * U;
+  const ddv = rfF(r.dalle_debord), dlv = rfF(r.longrine_debord);
+  const xd = (ddv || 0) > 0 ? Math.max(ddv, .05 * U) : (ddv == null ? .06 * U : 0);
+  const xl = dlv != null ? (dlv > 0 ? Math.max(dlv, .05 * U) : dlv) : xd + .07 * U;
+  const y1 = -zt, y2 = -(zt + edd), y3 = -(zt + edd + hld), xg = -ew - .55 * U, L = { lw: 1.5 };
+  T.poly([[xg, y1], [xd, y1], [xd, y2], [xg, y2]], { fc: "#F2F2F2", hatch: "pts" });
+  const xli = -ew - .3 * U;
+  T.poly([[xli, y2], [xl, y2], [xl, y3], [xli, y3]], { fc: "#E6E6E6", hatch: "h45" });
+  T.plot([0, 0], [haut, y1], L); T.plot([-ew, -ew], [haut, y1], L);
+  T.plot([xg, -ew], [y1, y1], L); T.plot([0, xd, xd], [y1, y1, y2], L); T.plot([xg, xd], [y2, y2], L);
+  T.plot([xg, xg + .02 * U, xg - .02 * U, xg], [y1, (y1 + y2) / 2 + .01 * U, (y1 + y2) / 2 - .01 * U, y2], { lw: .9 });
+  const atteinte = r.base_atteinte !== false;
+  T.plot([xl, xl], [y2, y3], L);
+  if (xl > xd) T.plot([xd, xl], [y2, y2], L);
+  if (atteinte) T.plot([xli, xl], [y3, y3], L); else T.plot([xl, xl + .025 * U, xl - .025 * U, xl], [y3, y3 - .02 * U, y3 - .045 * U, y3 - .065 * U], { lw: 1 });
+  T.plot([xli, xli], [y2, y3], { lw: .9, dash: [4, 3] });
+  const xpied = Math.max(xl, xd), W = .55 * U, xt = xpied + W;
+  T.bez([xt, 0], [xt, -.8 * fouille], [xpied + .25 * W, -fouille], [xl, -fouille], { lw: 1.2 });
+  T.plot([zt <= 0 ? xd : 0, xt], [0, 0], { lw: .8, dash: [4, 3] });
+  const xdr = xt + .95 * U;
+  T.plot([xt, xdr], [0, 0], { lw: 1.1 }); T.plot([xg - .05 * U, xdr], [-fouille, -fouille], { lw: .9, dash: [5, 3] });
+  const xlab = xdr + .04 * U;
+  T.text(xlab, .09 * U, "Profondeur / TN", { fs, b: 1, va: "bottom" });
+  rfCouches(T, lit, xt, xdr, xlab, fs, U * 1.4);
+  if (!lit.some(c => Math.abs(rfF(c.a, -1) - fouille) < 1e-6)) T.text(xlab, -fouille, rfM(fouille, 2, "- "), { ha: "left", va: "center", fs, b: 1, i: 1 });
+  if (ep) T.cote([-ew, haut + .07 * U], [0, haut + .07 * U], rfM(ep), { decal: .01 * U, fs });
+  else T.text(-ew / 2, haut + .05 * U, "ép. ?", { ha: "center", va: "bottom", fs: fs - .6, c: "#666" });
+  const xc = xpied + .08 * U;
+  if (Math.abs(zt) > 1e-9) T.cote([xc, 0], [xc, y1], rfM(Math.abs(zt)), { decal: .005 * U, fs });
+  T.cote([xc, y1], [xc, y2], edv ? rfM(edv) : "?", { decal: .005 * U, fs });
+  T.cote([xc, y2], [xc, y3], (!atteinte && hlv ? "> " : "") + (hlv ? rfM(hlv) : "?"), { decal: .005 * U, fs });
+  if (xd > 0) { T.cote([0, y1 + .04 * U], [xd, y1 + .04 * U], ""); T.text(-.01 * U, y1 + .04 * U, ddv == null ? "?" : rfM(ddv), { ha: "right", va: "center", fs, bg: "#fff" }); }
+  if (dlv == null || Math.abs(xl - xd) > 1e-9) {
+    const yy = y3 - .09 * U;
+    T.cote([0, yy], [xl, yy], ""); T.plot([0, 0], [y1, yy], { c: RF_COTE, lw: .5, dash: [2, 2] }); T.plot([xl, xl], [y3, yy], { c: RF_COTE, lw: .5, dash: [2, 2] });
+    T.text(-.01 * U, yy, dlv == null ? "?" : rfM(dlv), { ha: "right", va: "center", fs, bg: "#fff" });
+  }
+  if (r.mur) T.text(-ew - .04 * U, haut * .7, rfWrap(r.mur, 16).join("\n"), { ha: "right", va: "top", fs: fs - .4 });
+  T.text((xg - ew) / 2, (y1 + y2) / 2, "Dalle", { ha: "center", va: "center", fs: fs - .4, bg: "#F2F2F2" });
+  T.text(xli - .03 * U, (y2 + y3) / 2, r.longrine || "Longrine", { ha: "right", va: "center", fs: fs - .4 });
+  return [[xg - .12 * U, xdr + .45 * U], [Math.min(-fouille, y3 - .12 * U) - .08 * U, haut + .16 * U]];
+}
+function rfSoutenement(T, r, lit, fs) {
+  const hv = rfF(r.h_vue, 2) || 2, D = rfF(r.base_sous_tn, .1) || 0, zLit = Math.max(0, ...lit.map(c => rfF(c.a, 0)));
+  const fouille = Math.max(rfF(r.fouille) || 0, D + .15, zLit), U = hv + fouille;
+  const es = Math.max(rfF(r.semelle_ep, .2), .07 * U), ev = Math.max(rfF(r.voile_ep, .08), .045 * U), Tl = Math.max(rfF(r.talon, 1), 0), P = Math.max(rfF(r.patin, 0), 0);
+  const ha = rfF(r.tn_amont_h, .2) || 0, zt = hv - ha, xg = -Tl - .35 * U;
+  T.poly([[xg, zt - .05 * U], [0, zt - .05 * U], [0, -D + es], [xg, -D + es]], { hatch: "hbleu" });
+  T.poly([[0, hv], [ev, hv], [ev, -D + es], [ev + P, -D + es], [ev + P, -D], [-Tl, -D], [-Tl, -D + es], [0, -D + es]], { fc: "#EDEDED", hatch: "h45", ec: RF_NOIR, lw: 1.3 });
+  let [vx, vy] = T.vague(xg - .05 * U, 0, zt, .015 * U, 2); T.plot(vx, vy, { lw: 1 });
+  if (r.tn_amont) T.fleche(r.tn_amont, [xg + .12 * U, zt + .01 * U], [xg + .02 * U, zt + .09 * U], { fs: fs - .4 });
+  const xp = ev + P, W = .45 * U, xd = xp + W + .75 * U;
+  [vx, vy] = T.vague(xp + W * .45, xd, 0, .008 * U, 3); T.plot(vx, vy, { lw: 1 });
+  T.bez([xp + W * .45, 0], [xp + W * .25, -fouille], [xp - .02 * U, -fouille - .02 * U], [-Tl * .35, -D], { lw: 1.1 });
+  const xl = xd + .03 * U;
+  T.text(xl, .06 * U, "Profondeur", { fs, b: 1, va: "bottom" });
+  T.text(xp + W * .75, .025 * U, "T.N", { fs: fs - .4, ha: "center", va: "bottom" });
+  rfCouches(T, lit, xp + W * .55, xd, xl, fs, U);
+  if (rfF(r.voile_ep)) T.cote([0, hv + .06 * U], [ev, hv + .06 * U], rfM(rfF(r.voile_ep)), { decal: .004 * U, fs });
+  else T.text(ev / 2, hv + .04 * U, "ép. ?", { ha: "center", va: "bottom", fs: fs - .6, c: "#666" });
+  const xc = xp + ((r.fissures || []).length ? .26 : .14) * U;
+  T.plot([ev, xc + .02 * U], [hv, hv], { c: RF_COTE, lw: .5 }); T.plot([xp, xc + .02 * U], [0, 0], { c: RF_COTE, lw: .5 });
+  T.cote([xc, hv], [xc, 0], rfM(hv), { fs });
+  if (D > 0) { const xc2 = xp + .05 * U; T.plot([xp, xc2 + .02 * U], [-D, -D], { c: RF_COTE, lw: .5 }); T.cote([xc2, 0], [xc2, -D], (r.base_atteinte === false ? "> " : "") + rfM(D), { fs }); }
+  for (const fi of r.fissures || []) {
+    const zf = rfF(fi.z); if (zf == null) continue;
+    const y = hv - zf; [vx, vy] = T.vague(-.01 * U, ev + .01 * U, y, .006 * U, 2, 20); T.plot(vx, vy, { c: RF_ROUGE, lw: 1.2 });
+    T.fleche(fi.libelle || "Fissure", [0, y], [-.2 * U, y + .04 * U], { c: RF_ROUGE, ct: RF_ROUGE, ha: "right", fs: fs - .4 });
+    const xc3 = xp + .08 * U; T.plot([ev, xc3 + .02 * U], [y, y], { c: RF_ROUGE, lw: .5 }); T.cote([xc3, hv], [xc3, y], rfM(zf), { fs });
+  }
+  return [[xg - .06 * U, xl + .22 * U], [-fouille - .06 * U, hv + .12 * U]];
+}
+function rfFace(r, fs) {
+  const T = rfTraceur(), L = rfF(r.module_l, 2.5) || 2.5, H = rfF(r.module_h, 2) || 2;
+  T.poly([[0, 0], [L, 0], [L, H], [0, H]], { fc: "url(#gface)", ec: RF_NOIR, lw: 1.6 });
+  if (r.module) T.fleche(r.module, [0, H * .62], [-.42 * L, H * .62], { ha: "right", va: "center", fs: fs - .4 });
+  T.cote([0, -.1 * H], [L, -.1 * H], rfM(L), { decal: .01 * H, fs });
+  for (const x of [0, L]) T.plot([x, x], [0, -.13 * H], { c: RF_COTE, lw: .5 });
+  T.cote([L * 1.12, H], [L * 1.12, 0], rfM(H), { fs });
+  for (const y of [0, H]) T.plot([L, L * 1.15], [y, y], { c: RF_COTE, lw: .5 });
+  for (const fi of r.fissures || []) { const zf = rfF(fi.z); if (zf == null || zf > H) continue;
+    const [vx, vy] = T.vague(0, L, H - zf, .02 * H, 5, 80); T.plot(vx, vy, { c: RF_ROUGE, lw: 1.2 });
+    T.fleche(fi.libelle || "Fissure", [0, H - zf], [-.42 * L, H - zf], { c: RF_ROUGE, ct: RF_ROUGE, ha: "right", va: "center", fs: fs - .4 }); }
+  return rfSvg(T, [[-.75 * L, L * 1.35], [-.25 * H, H * 1.05]], "Vue de face", 320, 230);
+}
+function rfSimple(T, r, lit, fs) {
+  const zLit = Math.max(0, ...lit.map(c => rfF(c.a, 0))), fouille = rfF(r.fouille) || zLit || 1, U = Math.max(fouille, .5), x0 = 0, x1 = .7 * U;
+  T.bez([x0, 0], [x0 + .05 * U, -.9 * fouille], [x1 * .3, -fouille], [x1 * .5, -fouille], { lw: 1.2 });
+  T.bez([x1, 0], [x1 - .05 * U, -.9 * fouille], [x1 * .7, -fouille], [x1 * .5, -fouille], { lw: 1.2 });
+  const xd = x1 + .95 * U;
+  T.plot([-.3 * U, x0], [0, 0], { lw: 1.1 }); T.plot([x1, xd], [0, 0], { lw: 1.1 }); T.plot([-.3 * U, xd], [-fouille, -fouille], { lw: .9, dash: [5, 3] });
+  const xl = xd + .04 * U;
+  T.text(xl, .09 * U, "Profondeur / TN", { fs, b: 1, va: "bottom" });
+  rfCouches(T, lit, x1, xd, xl, fs, U * 1.2);
+  return [[-.35 * U, xl + .32 * U], [-fouille - .1 * U, .2 * U]];
+}
+function rfDessins(s) {
+  const r = s.rf || rfDefaut(), lit = (s.lithologie || []).filter(c => rfF(c.a) != null), fs = 7.2, T = rfTraceur();
+  const f = { soutenement: rfSoutenement, simple: rfSimple, dalle: rfDalle }[r.modele] || rfFondation;
+  const coupe = rfSvg(T, f(T, r, lit, fs), "Coupe transversale");
+  return { coupe, face: r.modele === "soutenement" && r.face !== false ? rfFace(r, fs) : null };
+}
+function carteRfTel(s) {
+  if (!s.rf || !s.rf.modele) s.rf = rfDefaut();
+  const r = s.rf, zone = h("div", { class: "rf-dessin" });
+  const maj = () => { const d = rfDessins(s); zone.innerHTML = d.coupe + (d.face || ""); sauver(); };
+  const nb = (lab, k, ph) => champ(lab, r, k, { type: "num", ph: ph || "vide = inconnu", apres: maj });
+  const tx = (lab, k, ph) => { const l = champ(lab, r, k, { ph }); l.querySelector("input").addEventListener("input", maj); return l; };
+  const bascule = (lab, k) => h("label", { class: "ligne", style: { fontSize: "15px", gap: "10px" } }, h("input", { type: "checkbox", checked: r[k] !== false, style: { width: "22px", height: "22px" }, onchange: e => { r[k] = e.target.checked; maj(); } }), lab);
+  const liste = (cle, cols, nouveau, titre) => {
+    r[cle] = r[cle] || [];
+    const z = h("div", { style: { display: "flex", flexDirection: "column", gap: "8px" } });
+    const red = () => { z.innerHTML = ""; r[cle].forEach((o, i) => z.append(h("div", { class: "rf-ligne" }, h("b", {}, String(i + 1)),
+      ...cols.map(([k, l, t]) => t === "txt" ? (() => { const c = champ(l, o, k); c.querySelector("input").addEventListener("input", maj); return c; })() : champ(l, o, k, { type: "num", ph: "?", apres: maj })),
+      h("button", { class: "dang mini", "aria-label": "Retirer", onclick: () => { r[cle].splice(i, 1); red(); maj(); } }, "×")))); };
+    red();
+    return [h("h3", { style: { marginTop: "4px" } }, titre), z, h("button", { class: "mini", onclick: () => { r[cle].push(nouveau()); red(); maj(); } }, "+ Ajouter")];
+  };
+  const M = r.modele;
+  const champs = M === "fondation" ? [tx("Mur (description)", "mur", "Mur de pierre + enduit ép. 15 mm"), h("div", { class: "g2" }, nb("Épaisseur du mur (m)", "mur_ep"), nb("Toit de la fondation / TN (m)", "toit", "0 si au TN")),
+      h("div", { class: "g2" }, nb("Profondeur de la fouille (m)", "fouille", "vide = base")), bascule("Base de la fondation atteinte", "base_atteinte"),
+      ...liste("redans", [["debord", "Débord (m)"], ["hauteur", "Hauteur (m)"]], () => ({ debord: null, hauteur: .3 }), "Redans (de haut en bas)"),
+      h("p", { class: "doux", style: { margin: 0, fontSize: "12.5px" } }, "Débord 0 : fondation dans le prolongement du mur ; vide : non mesuré (noté « ? »). Base non atteinte : la dernière hauteur est notée « > ».")]
+    : M === "dalle" ? [tx("Mur (description)", "mur", "Voile béton"), h("div", { class: "g2" }, nb("Épaisseur du mur (m)", "mur_ep"), nb("Toit de la dalle / TN (m)", "dalle_toit", "négatif si au-dessus")),
+      h("div", { class: "g2" }, nb("Épaisseur de la dalle (m)", "dalle_ep"), nb("Débord de la dalle (m)", "dalle_debord")),
+      tx("Appui sous la dalle", "longrine", "Longrine / fondation"), h("div", { class: "g2" }, nb("Débord de la longrine (m)", "longrine_debord", "négatif = en retrait"), nb("Hauteur de la longrine (m)", "longrine_h")),
+      bascule("Base de la longrine atteinte", "base_atteinte"), h("div", { class: "g2" }, nb("Profondeur de la fouille (m)", "fouille", "vide = base"))]
+    : M === "soutenement" ? [h("div", { class: "g2" }, nb("Hauteur vue / TN aval (m)", "h_vue"), nb("Base semelle sous TN aval (m)", "base_sous_tn")), bascule("Base atteinte", "base_atteinte"),
+      h("div", { class: "g2" }, nb("Épaisseur du voile (m)", "voile_ep"), nb("Épaisseur de la semelle (m)", "semelle_ep")),
+      h("div", { class: "g2" }, nb("Talon, côté terres (m)", "talon"), nb("Patin, côté aval (m)", "patin")),
+      h("div", { class: "g2" }, nb("Profondeur de la fouille (m)", "fouille"), nb("TN amont sous le haut du mur (m)", "tn_amont_h")), tx("Libellé du TN amont", "tn_amont", "T.N (SUD – EST)"),
+      bascule("Vue de face", "face"), tx("Élément (vue de face)", "module", "Module béton"), h("div", { class: "g2" }, nb("Largeur du module (m)", "module_l"), nb("Hauteur du module (m)", "module_h")),
+      ...liste("fissures", [["libelle", "Libellé", "txt"], ["z", "Prof. depuis le haut (m)"]], () => ({ libelle: "Fissure", z: 1 }), "Désordres (fissures…)")]
+    : [h("div", { class: "g2" }, nb("Profondeur de la fouille (m)", "fouille", "vide = base des couches"))];
+  setTimeout(maj, 0);
+  return h("div", { class: "carte" },
+    champ("Modèle de coupe", r, "modele", { type: "select", options: MODELES_RF, apres: () => rendre() }),
+    ...champs, zone,
+    h("p", { class: "doux", style: { margin: 0, fontSize: "12.5px" } }, "Les couches de la coupe viennent de la lithologie du sondage (profondeurs / TN ; pour le soutènement, / TN aval). HORUS redessine la même coupe à l'import pour la fiche PDF."),
+    champ("Sol d'assise", r, "assise"), champ("Observations", r, "observations", { type: "textarea", rows: 3 }));
+}
+
+// ------------------------------------------------------------ cartes du site (contexte RIG : géologie, aléas, parcellaire)
+const GPF = "https://data.geopf.fr/wmts?", GR_WMS = "https://georisques.gouv.fr/services", GR_API = "https://georisques.gouv.fr/api/v1";
+const MONDE = 40075016.685578488;
+const FONDS = { photo: ["ORTHOIMAGERY.ORTHOPHOTOS", "image/jpeg", "normal", "PM", 19], plan: ["GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2", "image/png", "normal", "PM", 19] };
+const THEMES_CARTE = [
+  { k: "geologie", lib: "Géologie", fond: "plan", wmts: ["BRGM_SCAN_D_GEOL50", "image/jpeg", "normal", "PM_0_15"], zmax: 15, z: 14, source: "Cartes géologiques 1/50 000 - BRGM (Géoplateforme, InfoTerre)" },
+  { k: "parcellaire", lib: "Parcellaire", fond: "photo", wmts: ["CADASTRALPARCELS.PARCELLAIRE_EXPRESS", "image/png", "PCI vecteur", "PM"], zmax: 19, z: 18, source: "Plan cadastral - IGN (Parcellaire Express)" },
+  { k: "sismique", lib: "Zone sismique", fond: "plan", wms: ["risq_zonage_sismique"], op: .55, zmax: 13, z: 8, source: "Zonage sismique de la France - Géorisques (planseisme.fr)" },
+  { k: "rga", lib: "Argiles (RGA)", fond: "photo", wms: ["ALEARG_REALISE"], op: .6, zmax: 18, z: 15, source: "Exposition au retrait-gonflement des argiles (2020) - Géorisques" },
+  { k: "nappe", lib: "Remontée de nappe", fond: "photo", wms: ["REMNAPPE_FIAB"], op: 1, zmax: 17, z: 14, source: "Zones sensibles aux remontées de nappes - Géorisques (BRGM)" },
+  { k: "inondation", lib: "Inondation", fond: "photo", wms: ["MASQ_EAIP", "ALEA_SYNT_01_04FAI_FXX", "ALEA_SYNT_01_02MOY_FXX", "ALEA_SYNT_01_01FOR_FXX"], op: .6, zmax: 17, z: 14, source: "EAIP et surfaces inondables des TRI - Géorisques" },
+];
+const SISMIQUE = { 1: "très faible", 2: "faible", 3: "modérée", 4: "moyenne", 5: "forte" };
+const px = (lat, lon, z) => { const s = 256 * 2 ** z, f = Math.max(-85, Math.min(85, lat)) * Math.PI / 180; return [(lon + 180) / 360 * s, (1 - Math.log(Math.tan(f) + 1 / Math.cos(f)) / Math.PI) / 2 * s]; };
+const latlon = (x, y, z) => { const s = 256 * 2 ** z, n = Math.PI - 2 * Math.PI * y / s; return [180 / Math.PI * Math.atan(Math.sinh(n)), x / s * 360 - 180]; };
+const mercM = (lat, lon) => [lon * MONDE / 360, Math.log(Math.tan(Math.PI / 4 + Math.max(-85, Math.min(85, lat)) * Math.PI / 360)) * MONDE / (2 * Math.PI)];
+const qs = o => Object.entries(o).map(([k, v]) => k + "=" + encodeURIComponent(v)).join("&");
+const urlTuile = (c, z, x, y) => GPF + qs({ SERVICE: "WMTS", REQUEST: "GetTile", VERSION: "1.0.0", LAYER: c[0], STYLE: c[2], TILEMATRIXSET: c[3], FORMAT: c[1], TILEMATRIX: z, TILEROW: y, TILECOL: x });
+function urlWms(couches, z, x, y) {
+  const r = MONDE / (256 * 2 ** z), x0 = x * 256 * r - MONDE / 2, y1 = MONDE / 2 - y * 256 * r;
+  return GR_WMS + "?" + qs({ SERVICE: "WMS", REQUEST: "GetMap", VERSION: "1.3.0", LAYERS: couches.join(","), STYLES: couches.map(() => "").join(","), CRS: "EPSG:3857",
+    BBOX: [x0, y1 - 256 * r, x0 + 256 * r, y1].map(v => v.toFixed(2)).join(","), WIDTH: 256, HEIGHT: 256, FORMAT: "image/png", TRANSPARENT: "TRUE" });
+}
+function urlGfi(couche, lat, lon, fmt) {
+  const [x, y] = mercM(lat, lon), d = 30;
+  return GR_WMS + "?" + qs({ SERVICE: "WMS", REQUEST: "GetFeatureInfo", VERSION: "1.3.0", LAYERS: couche, QUERY_LAYERS: couche, STYLES: "", CRS: "EPSG:3857",
+    BBOX: [x - d, y - d, x + d, y + d].map(v => v.toFixed(2)).join(","), WIDTH: 101, HEIGHT: 101, I: 50, J: 50, INFO_FORMAT: fmt, FEATURE_COUNT: 5 });
+}
+const urlLegende = couche => GR_WMS + "?" + qs({ SERVICE: "WMS", REQUEST: "GetLegendGraphic", VERSION: "1.3.0", FORMAT: "image/png", LAYER: couche, SLD_VERSION: "1.1.0" });
+async function jsonDistant(url, ms = 12000) {
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms);
+  try { const r = await fetch(url, { signal: ac.signal }); if (!r.ok) throw new Error("HTTP " + r.status); return await r.json(); }
+  finally { clearTimeout(t); }
+}
+const premier = (o, ...ks) => { if (!o) return null; if (Array.isArray(o)) o = o[0]; if (o && Array.isArray(o.data)) o = o.data[0]; if (!o) return null; for (const k of ks) if (o[k] != null && o[k] !== "") return o[k]; return null; };
+async function gfiJson(couche, lat, lon) {
+  const j = await jsonDistant(urlGfi(couche, lat, lon, "application/json"));
+  return (j.features || []).map(f => f.properties || {}).filter(p => Object.keys(p).length);
+}
+const cadreInfo = url => h("iframe", { src: url, title: "Fiche d'information du service", style: { width: "100%", height: "220px", border: "1px solid var(--ligne)", borderRadius: "10px", background: "#fff" } });
+
+/* lecture au point : {texte, details[], repli (url HTML), legende[]} */
+const LECTURES = {
+  async geologie(lat, lon, vue) {
+    const b = (la, lo, l) => { const [x, y] = mercM(la, lo), k = 1 / Math.cos(la * Math.PI / 180), d = l * k / 2; return [x - d, y - d, x + d, y + d].map(v => v.toFixed(2)).join(","); };
+    const leg = async bbox => jsonDistant("https://infoterre.brgm.fr/services/custoLegend?" + qs({ SRS: "EPSG:3857", TYPE: "legende", FORMAT: "json", LAYER: "C50_S_FGEOL", BBOX: bbox }), 20000);
+    try {
+      const pt = await leg(b(lat, lon, 4));
+      const f = (pt || []).find(x => x && (x.formations || []).length);
+      const fo = f && f.formations[0];
+      const out = { texte: fo ? (fo.notation ? fo.notation + " - " : "") + (fo.description || "") : "Aucune formation lue au point.",
+        details: f ? ["Carte géologique n° " + String(f.numero).padStart(4, "0") + " " + (f.carte || "") + " (1/50 000)"] : [], notice: f && (f.notice_url || "http://ficheinfoterre.brgm.fr/Notices/" + String(f.numero).padStart(4, "0") + "N.pdf") };
+      try {                                        // légende des formations visibles autour du point (environ 1,5 km)
+        const L = await leg(b(lat, lon, vue || 1500));
+        out.legende = (L || []).flatMap(x => (x && x.formations) || []).map(x => ({ c: ((x.motif || "").match(/FGcolor=([0-9A-Fa-f]{6})/) || [])[1], n: x.notation || "", d: x.description || "" }))
+          .filter((x, i, a) => a.findIndex(y => y.n === x.n && y.d === x.d) === i).slice(0, 40);
+      } catch (e) { /* légende facultative */ }
+      return out;
+    } catch (e) {
+      const [x, y] = mercM(lat, lon), d = 50;
+      return { texte: "", repli: "https://infoterre.brgm.fr/services/gfi?" + qs({ SERVICE: "WMS", VERSION: "1.1.1", REQUEST: "GetFeatureInfo", LAYERS: "SCAN_GEOL50", QUERY_LAYERS: "SCAN_GEOL50", STYLES: "", SRS: "EPSG:3857",
+        BBOX: [x - d, y - d, x + d, y + d].map(v => v.toFixed(2)).join(","), WIDTH: 101, HEIGHT: 101, X: 50, Y: 50, INFO_FORMAT: "text/html", FEATURE_COUNT: 3 }) };
+    }
+  },
+  async sismique(lat, lon) {
+    try {
+      const j = await jsonDistant(GR_API + "/zonage_sismique?" + qs({ latlon: lon.toFixed(6) + "," + lat.toFixed(6) }));
+      const z = String(premier(j, "code_zone", "zone_sismicite", "zone", "codeZone") || ""), n = (z.match(/[1-5]/) || [])[0];
+      if (n) return { texte: "Zone de sismicité " + n + " (" + SISMIQUE[n] + ")", details: ["Eurocode 8 / arrêté du 22 octobre 2010 : agr = " + { 1: "0,4", 2: "0,7", 3: "1,1", 4: "1,6", 5: "3,0" }[n] + " m/s²"] };
+    } catch (e) { /* repli WMS */ }
+    try {
+      const p = await gfiJson("risq_zonage_sismique", lat, lon), z = String(premier(p, "zone_sismicite", "code_zone") || ""), n = (z.match(/[1-5]/) || [])[0];
+      if (n) return { texte: "Zone de sismicité " + n + " (" + SISMIQUE[n] + ")", details: [] };
+    } catch (e) { /* repli HTML */ }
+    return { texte: "", repli: urlGfi("risq_zonage_sismique", lat, lon, "text/html") };
+  },
+  async rga(lat, lon) {
+    try {
+      const j = await jsonDistant(GR_API + "/rga?" + qs({ latlon: lon.toFixed(6) + "," + lat.toFixed(6) }));
+      const lib = premier(j, "exposition", "libelle", "libelle_exposition");
+      if (lib) return { texte: "Exposition au retrait-gonflement : " + lib, details: /moyen|fort/i.test(lib) ? ["Zone d'exposition moyenne ou forte : étude géotechnique préalable obligatoire à la vente d'un terrain non bâti constructible (loi ÉLAN)."] : [] };
+    } catch (e) { /* repli WMS */ }
+    try {
+      const p = await gfiJson("ALEARG_REALISE", lat, lon), lib = premier(p, "exposition", "niveau", "alea");
+      return { texte: lib ? "Exposition au retrait-gonflement : " + lib : "Exposition nulle ou hors zone cartographiée au point.", details: [] };
+    } catch (e) { return { texte: "", repli: urlGfi("ALEARG_REALISE", lat, lon, "text/html") }; }
+  },
+  async nappe(lat, lon) {
+    try {
+      const p = await gfiJson("REMNAPPE_FIAB", lat, lon);
+      const c = premier(p, "classe"), f = premier(p, "fiab_tot");
+      return { texte: c ? String(c) : "Pas de zone de remontée de nappe cartographiée au point.", details: f ? ["Fiabilité : " + String(f).toLowerCase()] : [] };
+    } catch (e) { return { texte: "", repli: urlGfi("REMNAPPE_FIAB", lat, lon, "text/html") }; }
+  },
+  async inondation(lat, lon) {
+    try {
+      const zones = [["ALEA_SYNT_01_01FOR_FXX", "Aléa fréquent (TRI)"], ["ALEA_SYNT_01_02MOY_FXX", "Aléa moyen (TRI)"], ["ALEA_SYNT_01_04FAI_FXX", "Aléa rare (TRI)"], ["MASQ_EAIP", "Enveloppe approchée des inondations potentielles (EAIP)"]];
+      const res = [];
+      for (const [c, l] of zones) if ((await gfiJson(c, lat, lon)).length) res.push(l);
+      return { texte: res.length ? "Point situé en zone : " + res[0].toLowerCase() : "Point hors des enveloppes d'inondation cartographiées.", details: res.slice(1) };
+    } catch (e) { return { texte: "", repli: urlGfi("MASQ_EAIP", lat, lon, "text/html") }; }
+  },
+  async parcellaire(lat, lon) {
+    try {
+      const j = await jsonDistant("https://apicarto.ign.fr/api/cadastre/parcelle?" + qs({ geom: JSON.stringify({ type: "Point", coordinates: [lon, lat] }) }));
+      const p = ((j.features || [])[0] || {}).properties;
+      if (!p) return { texte: "Aucune parcelle au point.", details: [] };
+      return { texte: "Parcelle " + (p.section || "") + " " + (p.numero || "").replace(/^0+/, ""), details: [(p.nom_com || "") + (p.code_insee ? " (" + p.code_insee + ")" : "") + (p.contenance ? " · " + p.contenance + " m²" : "")] };
+    } catch (e) { return { texte: "Parcelle non lue (service cadastral injoignable).", details: [] }; }
+  },
+};
+
+function vueCarte() {
+  const d = D(), s = S();
+  const v = vue();
+  v.theme = v.theme || "geologie";
+  const T = () => THEMES_CARTE.find(t => t.k === v.theme);
+  entete("Cartes du site", s ? s.nom + (d.numero ? " · " + d.numero : "") : (d.numero || d.nom));
+  barre();
+  // point de référence : sondage, sinon premier sondage localisé du dossier, sinon France
+  const ref = s && s.lat != null ? [s.lat, s.lon] : (d.sondages.find(x => x.lat != null) ? [d.sondages.find(x => x.lat != null).lat, d.sondages.find(x => x.lat != null).lon] : null);
+  if (!v.pt) v.pt = ref ? ref.slice() : null;
+  if (v.z == null) v.z = ref ? T().z : 6;
+  if (!v.c) v.c = ref ? px(ref[0], ref[1], v.z) : px(46.6, 2.4, v.z);
+  const boite = h("div", { class: "carte-geo", role: "application", "aria-label": "Carte" });
+  const calque = h("div", { class: "calque" });
+  boite.append(calque);
+  const res = h("div", { class: "carte" });
+  const zoomer = dz => {
+    const nz = Math.max(5, Math.min(Math.max(T().zmax, 16), v.z + dz));
+    if (nz === v.z) return;
+    v.c = [v.c[0] * 2 ** (nz - v.z), v.c[1] * 2 ** (nz - v.z)]; v.z = nz; dessiner();
+  };
+  function dessiner() {
+    calque.innerHTML = ""; calque.style.transform = "";
+    const W = boite.clientWidth || 360, H = boite.clientHeight || 420, t = T(), f = FONDS[t.fond];
+    const x0 = v.c[0] - W / 2, y0 = v.c[1] - H / 2, n = 2 ** v.z;
+    const zt = t.wmts ? Math.min(v.z, t.zmax) : v.z, k = 2 ** (v.z - zt);       // couche plafonnée (géologie zoom 15) : tuiles agrandies
+    for (let ty = Math.floor(y0 / 256); ty <= Math.floor((y0 + H) / 256); ty++) for (let tx = Math.floor(x0 / 256); tx <= Math.floor((x0 + W) / 256); tx++) {
+      if (ty < 0 || ty >= n) continue;
+      const xx = ((tx % n) + n) % n, pos = { left: (tx * 256 - x0) + "px", top: (ty * 256 - y0) + "px" };
+      calque.append(h("img", { src: urlTuile(f, Math.min(v.z, f[4]), xx, ty), alt: "", draggable: false, style: pos }));
+      if (t.wms) calque.append(h("img", { src: urlWms(t.wms, v.z, xx, ty), alt: "", draggable: false, style: { ...pos, opacity: t.op } }));
+    }
+    if (t.wmts) {
+      const tz = 256 * k;
+      for (let ty = Math.floor(y0 / tz); ty <= Math.floor((y0 + H) / tz); ty++) for (let tx = Math.floor(x0 / tz); tx <= Math.floor((x0 + W) / tz); tx++) {
+        const nz = 2 ** zt; if (ty < 0 || ty >= nz) continue;
+        calque.append(h("img", { src: urlTuile(t.wmts, zt, ((tx % nz) + nz) % nz, ty), alt: "", draggable: false, style: { left: (tx * tz - x0) + "px", top: (ty * tz - y0) + "px", width: tz + "px", height: tz + "px", opacity: t.k === "geologie" ? .85 : 1 } }));
+      }
+    }
+    const repere = (ll, cls) => { const [a, b] = px(ll[0], ll[1], v.z); calque.append(h("div", { class: cls, style: { left: (a - x0) + "px", top: (b - y0) + "px" } })); };
+    d.sondages.filter(x => x.lat != null).forEach(x => { repere([x.lat, x.lon], "rep-s"); const [a, b] = px(x.lat, x.lon, v.z); calque.append(h("span", { class: "rep-nom", style: { left: (a - x0 + 9) + "px", top: (b - y0 - 9) + "px" } }, x.nom)); });
+    if (v.pt) repere(v.pt, "rep-pt");
+  }
+  async function lire() {
+    const t = T();
+    res.innerHTML = "";
+    res.append(h("div", { class: "ligne" }, h("h3", {}, t.lib), h("span", { class: "esp" }), v.pt ? h("span", { class: "doux gps" }, fr(v.pt[0], 5) + " ; " + fr(v.pt[1], 5)) : null));
+    if (!v.pt) { res.append(h("p", { class: "doux", style: { margin: 0 } }, "Touchez la carte pour lire la donnée au point.")); return; }
+    if (!navigator.onLine) { res.append(h("div", { class: "alerte" }, "Pas de réseau : les cartes et la lecture au point ont besoin d'une connexion.")); return; }
+    const att = h("p", { class: "doux", style: { margin: 0 } }, "Lecture au point…"); res.append(att);
+    const pt = v.pt.slice(), cle = t.k;
+    const W = boite.clientWidth || 360, vueM = W * MONDE / (256 * 2 ** v.z) * Math.cos(pt[0] * Math.PI / 180);
+    const r = await LECTURES[cle](pt[0], pt[1], Math.min(Math.max(vueM, 400), 4000));
+    if (v.theme !== cle || !v.pt || v.pt[0] !== pt[0]) return;
+    att.remove();
+    if (r.texte) res.append(h("p", { style: { margin: 0, fontWeight: 600 } }, r.texte));
+    (r.details || []).forEach(x => res.append(h("p", { class: "doux", style: { margin: 0 } }, x)));
+    if (r.repli) res.append(h("p", { class: "doux", style: { margin: 0 } }, "Fiche du service au point :"), cadreInfo(r.repli));
+    if (r.notice) res.append(h("a", { href: r.notice, target: "_blank", rel: "noopener", class: "doux" }, "Notice de la carte géologique (PDF, BRGM)"));
+    if (r.legende && r.legende.length) res.append(h("h3", { style: { marginTop: "6px" } }, "Légende autour du point"),
+      h("div", { class: "leg-geol" }, ...r.legende.map(x => h("div", {}, h("i", { style: { background: x.c ? "#" + x.c : "var(--ligne)" } }), h("b", {}, x.n), h("span", {}, x.d)))));
+    if (t.wms) res.append(h("h3", { style: { marginTop: "6px" } }, "Légende"), ...t.wms.slice(0, 2).map(c => h("img", { src: urlLegende(c), alt: "Légende " + t.lib, style: { maxWidth: "100%", background: "#fff", borderRadius: "8px", padding: "4px" } })));
+    if (s && r.texte) res.append(h("button", { class: "mini", onclick: () => {
+      s.contexte = s.contexte || {};
+      s.contexte[cle] = { texte: r.texte, details: r.details || [], lat: pt[0], lon: pt[1], date: aujourdhui() };
+      sauver(); toast("Ajouté au sondage " + s.nom + " (repris par HORUS à l'import).");
+    } }, "Garder dans le sondage " + s.nom));
+    res.append(h("p", { class: "doux", style: { margin: 0, fontSize: "12px" } }, "Source : " + t.source + "."));
+  }
+  // gestes : glisser, pincer, toucher
+  const pts = new Map(); let dep = null, pince = null;
+  boite.addEventListener("pointerdown", e => { boite.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pts.size === 1) dep = { x: e.clientX, y: e.clientY, bouge: false };
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; pince = { d0: Math.hypot(a[0] - b[0], a[1] - b[1]), r: 1 }; dep = null; } });
+  boite.addEventListener("pointermove", e => {
+    if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pince && pts.size === 2) { const [a, b] = [...pts.values()]; pince.r = Math.hypot(a[0] - b[0], a[1] - b[1]) / pince.d0; calque.style.transform = "scale(" + pince.r + ")"; calque.style.transformOrigin = "50% 50%"; return; }
+    if (dep) { const dx = e.clientX - dep.x, dy = e.clientY - dep.y; if (Math.hypot(dx, dy) > 6) dep.bouge = true; if (dep.bouge) calque.style.transform = "translate(" + dx + "px," + dy + "px)"; }
+  });
+  const fin = e => {
+    if (!pts.has(e.pointerId)) return; pts.delete(e.pointerId);
+    if (pince) { if (!pts.size) { const dz = Math.round(Math.log2(pince.r)); pince = null; if (dz) zoomer(dz); else dessiner(); } return; }
+    if (!dep) return;
+    const dx = e.clientX - dep.x, dy = e.clientY - dep.y;
+    if (dep.bouge) { v.c = [v.c[0] - dx, v.c[1] - dy]; dessiner(); }
+    else { const r = boite.getBoundingClientRect(), W = boite.clientWidth, H = boite.clientHeight;
+      v.pt = latlon(v.c[0] - W / 2 + (e.clientX - r.left), v.c[1] - H / 2 + (e.clientY - r.top), v.z); dessiner(); lire(); }
+    dep = null;
+  };
+  boite.addEventListener("pointerup", fin); boite.addEventListener("pointercancel", fin);
+  boite.addEventListener("wheel", e => { e.preventDefault(); zoomer(e.deltaY < 0 ? 1 : -1); }, { passive: false });
+  const commandes = h("div", { class: "cmd-carte" },
+    h("button", { "aria-label": "Zoomer", onclick: () => zoomer(1) }, "+"), h("button", { "aria-label": "Dézoomer", onclick: () => zoomer(-1) }, "−"),
+    ref ? h("button", { "aria-label": "Revenir au sondage", onclick: () => { v.pt = ref.slice(); v.c = px(ref[0], ref[1], v.z); dessiner(); lire(); } }, "◎") : null);
+  boite.append(commandes);
+  const themes = h("div", { class: "chips themes" }, ...THEMES_CARTE.map(t => h("button", { class: "chip" + (t.k === v.theme ? " on" : ""), "aria-pressed": t.k === v.theme ? "true" : "false", onclick: () => {
+    const zc = v.z; v.theme = t.k; v.z = v.pt ? t.z : Math.min(v.z, t.zmax + 1);
+    const centre = v.pt || latlon(v.c[0], v.c[1], zc); v.c = px(centre[0], centre[1], v.z); rendre();
+  } }, t.lib)));
+  setTimeout(() => { dessiner(); lire(); }, 0);
+  return [themes, boite, res, !navigator.onLine ? h("div", { class: "alerte" }, "Hors connexion : les cartes s'afficheront au retour du réseau.") : null,
+    h("p", { class: "doux", style: { margin: "0 4px", fontSize: "12.5px" } }, "Glissez pour déplacer, pincez ou utilisez + et − pour zoomer, touchez la carte pour lire la donnée à cet endroit. Les cartes demandent une connexion internet.")];
+}
+
+// ------------------------------------------------------------ Tech : planning journalier du technicien
+let PLANNING = null, ONGLET = "sondages", JOUR_TECH = aujourdhui();
+try { ONGLET = localStorage.getItem("horus-onglet") || "sondages"; } catch (e) { /* facultatif */ }
+const JOURS_COURTS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+const iso = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+const dIso = s => { const [y, m, j] = s.split("-").map(Number); return new Date(y, m - 1, j); };
+const decaler = (s, n) => { const d = dIso(s); d.setDate(d.getDate() + n); return iso(d); };
+const lundi = s => { const d = dIso(s), k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k); return iso(d); };
+const jourLong = s => { const d = dIso(s); return ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"][d.getDay()] + " " + d.getDate() + " " + MOIS[d.getMonth()]; };
+const sansAccent = t => (t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+function sauverPlanning() { if (PLANNING) { clearTimeout(minuterie); minuterie = setTimeout(() => ecrire(PLANNING), 300); } }
+function ongletsAccueil() {
+  return h("div", { class: "onglets", role: "tablist" }, ...[["sondages", "Sondages"], ["tech", "Tech · planning"]].map(([k, l]) =>
+    h("button", { role: "tab", "aria-selected": ONGLET === k ? "true" : "false", class: ONGLET === k ? "on" : "", onclick: () => { ONGLET = k; try { localStorage.setItem("horus-onglet", k); } catch (e) { /* */ } rendre(); } }, l)));
+}
+function vueTech() {
+  entete("HORUS Terrain", "Tech · planning journalier");
+  if (!PLANNING || !PLANNING.nom) {
+    const o = { nom: "", prenom: "" };
+    barre();
+    return [ongletsAccueil(), h("div", { class: "carte" }, h("h3", {}, "Votre nom"),
+      h("p", { class: "doux", style: { margin: 0 } }, "Il sert à retrouver votre ligne sur la photo du planning d'agence."),
+      h("div", { class: "g2" }, champ("Nom de famille", o, "nom", { caps: "characters", ph: "ROCHEL" }), champ("Prénom", o, "prenom", { ph: "Enzo" })),
+      h("button", { class: "prim", onclick: async () => {
+        if (!o.nom.trim()) return toast("Indiquez votre nom de famille.");
+        PLANNING = { id: "__planning__", nom: o.nom.trim().toUpperCase(), prenom: o.prenom.trim(), creneaux: [] }; await ecrire(PLANNING); rendre();
+      } }, "Enregistrer"))];
+  }
+  const P = PLANNING, sem = lundi(JOUR_TECH);
+  barre(h("button", { class: "prim", onclick: () => editerCreneau(null) }, "+ Créneau"), h("button", { class: "vert", onclick: importerPlanning }, "Photo du planning"));
+  const legende = h("div", { class: "leg-cat" }, ...Object.values(CATS).slice(0, 3).map(([l, c]) => h("span", {}, h("i", { style: { background: c } }), l)), h("span", { class: "esp" }),
+    h("button", { class: "mini", onclick: exporterPlanning }, "Excel…"));
+  const jours = [0, 1, 2, 3, 4, 5, 6].map(i => decaler(sem, i));
+  const duJour = P.creneaux.filter(c => c.date === JOUR_TECH).sort((a, b) => (a.debut || "").localeCompare(b.debut || ""));
+  const dS = dIso(sem), dF = dIso(decaler(sem, 6));
+  return [ongletsAccueil(),
+    h("div", { class: "ligne", style: { padding: "0 2px" } }, h("h3", {}, (P.prenom ? P.prenom + " " : "") + P.nom), h("span", { class: "esp" }),
+      h("button", { class: "mini", onclick: () => { const o = { nom: P.nom, prenom: P.prenom };
+        feuille("Votre nom", [h("div", { class: "g2" }, champ("Nom de famille", o, "nom", { caps: "characters" }), champ("Prénom", o, "prenom"))],
+          f => [h("button", { class: "prim", onclick: () => { P.nom = (o.nom || "").trim().toUpperCase(); P.prenom = (o.prenom || "").trim(); sauverPlanning(); f(); rendre(); } }, "Enregistrer")]); } }, "Modifier")),
+    h("div", { class: "carte", style: { gap: "8px" } },
+      h("div", { class: "ligne" }, h("button", { class: "mini", "aria-label": "Semaine précédente", onclick: () => { JOUR_TECH = decaler(JOUR_TECH, -7); rendre(); } }, "‹"),
+        h("b", { style: { flex: 1, textAlign: "center" } }, "Semaine du " + dS.getDate() + (dS.getMonth() !== dF.getMonth() ? " " + MOIS[dS.getMonth()] : "") + " au " + dF.getDate() + " " + MOIS[dF.getMonth()]),
+        h("button", { class: "mini", "aria-label": "Semaine suivante", onclick: () => { JOUR_TECH = decaler(JOUR_TECH, 7); rendre(); } }, "›")),
+      h("div", { class: "semaine" }, ...jours.map(j => { const d = dIso(j), cj = P.creneaux.filter(c => c.date === j).sort((a, b) => (a.debut || "").localeCompare(b.debut || "")), n = cj.length;
+        return h("button", { class: (j === JOUR_TECH ? "on " : "") + (j === aujourdhui() ? "auj" : ""), "aria-pressed": j === JOUR_TECH ? "true" : "false", onclick: () => { JOUR_TECH = j; rendre(); } },
+          h("small", {}, JOURS_COURTS[d.getDay()]), h("b", {}, d.getDate()), h("span", { class: "pts" }, ...(n ? [...new Set(cj.map(catDe))] : ["vide"]).map(k => h("i", { style: { background: k === "vide" ? "transparent" : CATS[k][1] } })))); })), legende),
+    h("h2", {}, jourLong(JOUR_TECH) + (JOUR_TECH === aujourdhui() ? " · aujourd'hui" : "")),
+    h("div", { class: "carte" }, duJour.length ? h("div", { class: "liste" }, ...duJour.map(c => h("div", { class: "creneau", style: { borderLeftColor: CATS[catDe(c)][1] }, onclick: () => editerCreneau(c) },
+      h("div", { class: "heures" }, h("b", {}, c.debut || "–"), h("span", {}, c.fin || "")),
+      h("div", { class: "t" }, h("small", { class: "cat-lib" }, CATS[catDe(c)][0]), h("b", {}, (c.numero ? c.numero + " · " : "") + (c.dossier || "(sans libellé)")),
+        c.adresse ? h("span", {}, c.adresse) : null, c.obs ? h("span", { class: "doux" }, c.obs) : null,
+        c.source === "photo" ? h("span", { class: "pill", style: { alignSelf: "flex-start" } }, "lu sur le planning") : null),
+      c.adresse ? h("button", { class: "itin", onclick: e => { e.stopPropagation(); if (!appuiLong) itineraire(c.adresse); appuiLong = false; },
+        oncontextmenu: e => { e.preventDefault(); e.stopPropagation(); appuiLong = true; itineraire(c.adresse, true); } }, "Itinéraire") : null)))
+      : h("div", { class: "vide" }, "Rien de prévu ce jour. Ajoutez un créneau ou importez la photo du planning.")),
+  ];
+}
+let appuiLong = false;
+/* itinéraire : choix de l'application de navigation (mémorisé sur ce téléphone) */
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const ANDROID = /Android/i.test(navigator.userAgent);
+/* [clé, libellé, lien direct vers l'application installée, lien web de secours]
+   iPhone : schémas comgooglemaps:// waze:// maps:// (un lien https ouvert depuis l'application installée reste dans un navigateur intégré,
+   sans GPS : « Votre position approximative ») ; Android : google.navigation: / geo: ouvrent l'application. */
+const APPS_NAV = () => {
+  const e = encodeURIComponent, web = {
+    google: a => "https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=" + e(a),
+    waze: a => "https://waze.com/ul?q=" + e(a) + "&navigate=yes",
+    plans: a => "https://maps.apple.com/?daddr=" + e(a) };
+  if (IOS) return [["google", "Google Maps", a => "comgooglemaps://?daddr=" + e(a) + "&directionsmode=driving", web.google],
+    ["waze", "Waze", a => "waze://?q=" + e(a) + "&navigate=yes", web.waze], ["plans", "Plans (Apple)", a => "maps://?daddr=" + e(a), web.plans]];
+  if (ANDROID) return [["google", "Google Maps", a => "google.navigation:q=" + e(a), web.google], ["waze", "Waze", a => "waze://?q=" + e(a) + "&navigate=yes", web.waze],
+    ["geo", "Autre application du téléphone", a => "geo:0,0?q=" + e(a), web.google]];
+  return [["google", "Google Maps", web.google, web.google], ["waze", "Waze", web.waze, web.waze]];
+};
+function ouvrirNav(cle, adresse) {
+  const app = APPS_NAV().find(x => x[0] === cle) || APPS_NAV()[0], direct = app[2](adresse), secours = app[3](adresse);
+  if (direct === secours) { const w = window.open(direct, "_blank", "noopener"); if (!w) location.href = direct; return; }
+  // l'application s'ouvre : la page passe en arrière-plan ; sinon (application absente) on ouvre la version web
+  let parti = false;
+  const vu = () => { if (document.hidden) parti = true; };
+  document.addEventListener("visibilitychange", vu);
+  setTimeout(() => {
+    document.removeEventListener("visibilitychange", vu);
+    if (!parti && !document.hidden) { toast(app[1] + " ne semble pas installé : ouverture de la version web.", 3500); const w = window.open(secours, "_blank", "noopener"); if (!w) location.href = secours; }
+  }, 1800);
+  location.href = direct;
+}
+function itineraire(adresse, choisir) {
+  let pref = null; try { pref = localStorage.getItem("horus-nav"); } catch (e) { /* */ }
+  if (pref && !choisir && APPS_NAV().some(x => x[0] === pref)) return ouvrirNav(pref, adresse);
+  let garder = true;
+  const cb = h("input", { type: "checkbox", checked: true, style: { width: "22px", height: "22px" }, onchange: () => { garder = cb.checked; } });
+  const fermer = feuille("Itinéraire vers", [h("p", { style: { margin: 0, fontWeight: 600 } }, adresse),
+    h("div", { style: { display: "flex", flexDirection: "column", gap: "8px" } }, ...APPS_NAV().map(([k, l]) => h("button", { class: k === pref ? "prim" : "", onclick: () => {
+      if (garder) { try { localStorage.setItem("horus-nav", k); } catch (e) { /* */ } }
+      fermer(); ouvrirNav(k, adresse);
+    } }, l))),
+    h("label", { class: "ligne", style: { fontSize: "14px" } }, cb, "Toujours utiliser cette application (modifiable avec un appui long sur « Itinéraire »)")]);
+}
+function editerCreneau(c) {
+  const neuf = !c;
+  const o = c ? { ...c, type: catDe(c) } : { id: uid("cr"), date: JOUR_TECH, debut: "08:00", fin: "12:00", type: "terrain", dossier: "", numero: "", adresse: "", obs: "", source: "manuel" };
+  feuille(neuf ? "Nouveau créneau" : "Créneau", [
+    choixCat(o),
+    champ("Date", o, "date", { type: "date" }),
+    h("div", { class: "g2" }, champ("Début", o, "debut", { type: "time" }), champ("Fin", o, "fin", { type: "time" })),
+    h("div", { class: "g2" }, champ("Dossier / chantier", o, "dossier", { ph: "ST SEVER - Couvent" }), champ("N° de dossier", o, "numero", { caps: "characters" })),
+    champ("Adresse", o, "adresse", { ph: "rue, commune" }),
+    o.adresse ? h("button", { class: "mini", type: "button", onclick: () => itineraire(o.adresse, true) }, "Itinéraire (choisir l'application)") : null,
+    champ("Observations", o, "obs", { type: "textarea", rows: 3, ph: "matériel, contact, accès…" }),
+    !neuf ? h("button", { class: "dang", onclick: () => { PLANNING.creneaux = PLANNING.creneaux.filter(x => x.id !== o.id); sauverPlanning(); document.querySelector(".feuille").remove(); rendre(); } }, "Supprimer ce créneau") : null,
+  ], f => [h("button", { class: "prim", onclick: () => {
+    if (!o.date) return toast("Indiquez la date.");
+    if (o.debut && o.fin && o.fin <= o.debut) return toast("La fin doit suivre le début.");
+    if (!neuf) { o.source = c.source === "photo" ? "photo-modifie" : c.source; }
+    PLANNING.creneaux = PLANNING.creneaux.filter(x => x.id !== o.id).concat([o]); JOUR_TECH = o.date; sauverPlanning(); f(); rendre();
+  } }, "Enregistrer")]);
+}
+
+/* ---------- catégories de créneaux (code couleur du planning d'agence) */
+const CATS = { terrain: ["Terrain", "#FFE45C", "FFF2A8"], bureau: ["Bureau", "#3FA9F5", "BFE3FB"], labo: ["Labo", "#9B6BD6", "DCCBF2"], autre: ["Autre", "#A7B0BF", "E3E7EE"] };
+const catDe = c => CATS[c && c.type] ? c.type : "terrain";
+/* catégorie d'une barre lue sur la photo d'après sa teinte : violet = labo, bleu / cyan = bureau, jaune = terrain */
+function catCouleur(rgb) {
+  const [r, g, b] = (rgb.match(/\d+/g) || [0, 0, 0]).map(Number), mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  if (mx - mn < 40) return "autre";
+  const d = mx - mn; let hh = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hh = (hh * 60 + 360) % 360;
+  if (hh >= 255 && hh <= 310) return "labo";
+  if (hh >= 170 && hh < 255) return "bureau";
+  if (hh >= 45 && hh <= 75) return "terrain";
+  return "autre";
+}
+function choixCat(o, apres) {
+  const z = h("div", { class: "chips" });
+  const d = () => { z.innerHTML = ""; Object.entries(CATS).forEach(([k, [l, c]]) => z.append(h("button", { class: "chip cat" + (catDe(o) === k ? " on" : ""), type: "button", "aria-pressed": catDe(o) === k ? "true" : "false",
+    onclick: () => { o.type = k; d(); apres && apres(); } }, h("i", { style: { background: c } }), l))); };
+  d(); return z;
+}
+
+/* ---------- export Excel (.xlsx écrit directement, sans bibliothèque : fonctionne hors connexion) */
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = u => { let c = 0xFFFFFFFF; for (let i = 0; i < u.length; i++) c = CRC[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function zipStocke(fichiers) {                  // archive zip sans compression
+  const enc = new TextEncoder(), parts = [], cent = []; let pos = 0;
+  const u16 = v => [v & 255, (v >> 8) & 255], u32 = v => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255];
+  for (const [nom, txt] of fichiers) {
+    const n = enc.encode(nom), d = enc.encode(txt), c = crc32(d);
+    const loc = [...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(c), ...u32(d.length), ...u32(d.length), ...u16(n.length), ...u16(0)];
+    parts.push(new Uint8Array(loc), n, d);
+    cent.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(c), ...u32(d.length), ...u32(d.length), ...u16(n.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(pos)]), n);
+    pos += loc.length + n.length + d.length;
+  }
+  const tc = cent.reduce((s, x) => s + x.length, 0);
+  return new Blob([...parts, ...cent, new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(fichiers.length), ...u16(fichiers.length), ...u32(tc), ...u32(pos), ...u16(0)])]);
+}
+function xlsxPlanning(lignes, titre) {
+  const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const ordre = Object.keys(CATS);                                  // styles : 1 en-tête, 2 titre, puis 3 par catégorie (texte, date, nombre)
+  const st = (k, n) => 3 + ordre.indexOf(k) * 3 + n;
+  const fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>', '<fill><patternFill patternType="solid"><fgColor rgb="FF223558"/></patternFill></fill>']
+    .concat(ordre.map(k => '<fill><patternFill patternType="solid"><fgColor rgb="FF' + CATS[k][2] + '"/></patternFill></fill>'));
+  const bord = '<border><left style="thin"><color rgb="FFC9D1DD"/></left><right style="thin"><color rgb="FFC9D1DD"/></right><top style="thin"><color rgb="FFC9D1DD"/></top><bottom style="thin"><color rgb="FFC9D1DD"/></bottom><diagonal/></border>';
+  const xfs = ['<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>', '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1"/>', '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" applyFont="1"/>']
+    .concat(...ordre.map((k, i) => [0, 164, 2].map(f => '<xf numFmtId="' + f + '" fontId="0" fillId="' + (3 + i) + '" borderId="1" applyNumberFormat="1" applyFill="1" applyBorder="1"/>')));
+  const styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="[$-40C]ddd dd/mm/yyyy"/></numFmts>'
+    + '<fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="14"/><color rgb="FF223558"/><name val="Calibri"/></font></fonts>'
+    + '<fills count="' + fills.length + '">' + fills.join("") + '</fills><borders count="2"><border/>' + bord + '</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+    + '<cellXfs count="' + xfs.length + '">' + xfs.join("") + '</cellXfs></styleSheet>';
+  const col = i => String.fromCharCode(65 + i);
+  const cT = (r, i, v, s) => '<c r="' + col(i) + r + '" t="inlineStr" s="' + s + '"><is><t xml:space="preserve">' + esc(v) + '</t></is></c>';
+  const cN = (r, i, v, s) => v == null || v === "" ? cT(r, i, "", s) : '<c r="' + col(i) + r + '" s="' + s + '"><v>' + v + '</v></c>';
+  const serie = iso_ => (Date.UTC(...iso_.split("-").map((v, k) => k === 1 ? v - 1 : +v)) - Date.UTC(1899, 11, 30)) / 86400000;
+  const duree = c => { if (!c.debut || !c.fin) return ""; const [a, b] = [c.debut, c.fin].map(t => t.split(":").map(Number)); return +(((b[0] * 60 + b[1]) - (a[0] * 60 + a[1])) / 60).toFixed(2); };
+  const rows = ['<row r="1">' + cT(1, 0, titre, 2) + '</row>'];
+  const ent = ["Date", "Début", "Fin", "Durée (h)", "Type", "Dossier / chantier", "N° dossier", "Adresse", "Observations"];
+  rows.push('<row r="3">' + ent.map((e, i) => cT(3, i, e, 1)).join("") + '</row>');
+  let r = 4; const tot = {};
+  for (const c of lignes) {
+    const k = catDe(c), du = duree(c); tot[k] = (tot[k] || 0) + (du || 0);
+    rows.push('<row r="' + r + '">' + [cN(r, 0, serie(c.date), st(k, 1)), cT(r, 1, c.debut || "", st(k, 0)), cT(r, 2, c.fin || "", st(k, 0)), cN(r, 3, du, st(k, 2)), cT(r, 4, CATS[k][0], st(k, 0)),
+      cT(r, 5, c.dossier || "", st(k, 0)), cT(r, 6, c.numero || "", st(k, 0)), cT(r, 7, c.adresse || "", st(k, 0)), cT(r, 8, c.obs || "", st(k, 0))].join("") + '</row>');
+    r++;
+  }
+  r++;
+  rows.push('<row r="' + r + '">' + cT(r, 0, "Total par type", 1) + cT(r, 1, "", 1) + cT(r, 2, "", 1) + cT(r, 3, "Heures", 1) + '</row>'); r++;
+  for (const k of ordre) if (tot[k]) { rows.push('<row r="' + r + '">' + cT(r, 0, CATS[k][0], st(k, 0)) + cT(r, 1, "", st(k, 0)) + cT(r, 2, "", st(k, 0)) + cN(r, 3, +tot[k].toFixed(2), st(k, 2)) + '</row>'); r++; }
+  const larg = [17, 8, 8, 10, 10, 36, 14, 34, 40];
+  const feuille_ = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+    + '<cols>' + larg.map((w, i) => '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>').join("") + '</cols><sheetData>' + rows.join("") + '</sheetData></worksheet>';
+  return zipStocke([
+    ["[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+    ["_rels/.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ["xl/workbook.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Planning" sheetId="1" r:id="rId1"/></sheets></workbook>'],
+    ["xl/_rels/workbook.xml.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+    ["xl/styles.xml", styles],
+    ["xl/worksheets/sheet1.xml", feuille_],
+  ]);
+}
+function exporterPlanning() {
+  const sem = lundi(JOUR_TECH), o = { du: sem, au: decaler(sem, 6) };
+  const raccourcis = h("div", { class: "chips" }, ...[["Cette semaine", 0, 6], ["Semaine suivante", 7, 13], ["4 semaines", 0, 27]].map(([l, a, b]) =>
+    h("button", { class: "chip", type: "button", onclick: () => { o.du = decaler(sem, a); o.au = decaler(sem, b); iDu.value = o.du; iAu.value = o.au; } }, l)));
+  const iDu = h("input", { type: "date", value: o.du, onchange: () => { o.du = iDu.value; } }), iAu = h("input", { type: "date", value: o.au, onchange: () => { o.au = iAu.value; } });
+  feuille("Planning en Excel", [h("div", { class: "g2" }, h("label", { class: "ch" }, "Du", iDu), h("label", { class: "ch" }, "Au", iAu)), raccourcis,
+    h("p", { class: "doux", style: { margin: 0 } }, "Une ligne par créneau, colorée selon son type (terrain, bureau, labo), et le total d'heures par type.")],
+  f => {
+    const fichier = () => {
+      if (!o.du || !o.au || o.au < o.du) { toast("Choisissez une plage de dates valide."); return null; }
+      const L = PLANNING.creneaux.filter(c => c.date >= o.du && c.date <= o.au).sort((a, b) => (a.date + a.debut).localeCompare(b.date + b.debut));
+      if (!L.length) { toast("Aucun créneau sur cette plage."); return null; }
+      const nom = "Planning_" + PLANNING.nom + "_" + o.du.replace(/-/g, "") + "-" + o.au.replace(/-/g, "") + ".xlsx";
+      const titre = "Planning de " + (PLANNING.prenom ? PLANNING.prenom + " " : "") + PLANNING.nom + " du " + dateFr(o.du) + " au " + dateFr(o.au);
+      return new File([xlsxPlanning(L, titre)], nom, { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    };
+    return [h("button", { onclick: () => { const fi = fichier(); if (fi) { telecharger(fi); f(); toast("Enregistré dans Téléchargements : " + fi.name, 5000); } } }, "Enregistrer"),
+      h("button", { class: "prim", onclick: async () => {
+        const fi = fichier(); if (!fi) return;
+        try {
+          if (!(navigator.canShare && navigator.canShare({ files: [fi] }))) throw new Error("partage indisponible");
+          await navigator.share({ files: [fi], title: fi.name }); f();
+        } catch (e) { if (e && e.name === "AbortError") return; telecharger(fi); f(); toast("Partage refusé par ce téléphone : fichier enregistré dans Téléchargements (" + fi.name + "). Joignez-le à un mail.", 6000); }
+      } }, "Partager…")];
+  });
+}
+
+/* ---------- lecture d'une photo / capture du planning d'agence (diagramme de Gantt : noms à gauche, jours et heures en haut) */
+const OCR_CONF = window.HORUS_OCR || { src: "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js", lang: "fra", opts: {} };
+let OCR_WORKER = null;
+function chargerScript(src) { return new Promise((ok, ko) => { if (window.Tesseract) return ok(); const s = h("script", { src }); s.onload = ok; s.onerror = () => ko(new Error("moteur de lecture non téléchargé (connexion ?)")); document.head.append(s); }); }
+async function moteurOcr(info) {
+  if (OCR_WORKER) return OCR_WORKER;
+  await chargerScript(OCR_CONF.src);
+  OCR_WORKER = await Tesseract.createWorker(OCR_CONF.lang, 1, { ...OCR_CONF.opts, logger: m => { if (m.status && info) info(m.status === "recognizing text" ? "Lecture du texte…" : "Préparation du moteur de lecture (" + Math.round((m.progress || 0) * 100) + " %)…"); } });
+  return OCR_WORKER;
+}
+function toile(w, hh) { const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(hh)); return c; }
+/* découpe agrandie et binarisée (encre noire sur blanc) d'une zone de l'image */
+function decoupe(src, x, y, w, hh, k = 3, sens = null) {
+  const c = toile(w * k, hh * k), cx = c.getContext("2d");
+  cx.imageSmoothingQuality = "high"; cx.drawImage(src, x, y, w, hh, 0, 0, c.width, c.height);
+  const im = cx.getImageData(0, 0, c.width, c.height), p = im.data, n = p.length / 4, L = new Float32Array(n);
+  for (let i = 0, q = 0; i < p.length; i += 4, q++) L[q] = .299 * p[i] + .587 * p[i + 1] + .114 * p[i + 2];
+  // seuil local : écart à la moyenne sur une fenêtre de la taille d'une lettre (résiste au vignettage, aux reflets, au faible contraste
+  // d'une photo d'écran) ; l'encre est le sens d'écart le plus fréquent (texte foncé sur fond clair ou l'inverse)
+  const Wc = c.width, Hc = c.height, I = new Float64Array((Wc + 1) * (Hc + 1)), M = new Float32Array(n);
+  for (let y = 0; y < Hc; y++) { let ligne = 0; for (let x = 0; x < Wc; x++) { ligne += L[y * Wc + x]; I[(y + 1) * (Wc + 1) + x + 1] = I[y * (Wc + 1) + x + 1] + ligne; } }
+  const r = Math.max(8, Math.round(12 * k)), D = 15;
+  let fonces = 0, clairs = 0;
+  for (let y = 0; y < Hc; y++) for (let x = 0; x < Wc; x++) {
+    const x0 = Math.max(0, x - r), x1 = Math.min(Wc, x + r + 1), y0 = Math.max(0, y - r), y1 = Math.min(Hc, y + r + 1), q = y * Wc + x;
+    M[q] = (I[y1 * (Wc + 1) + x1] - I[y0 * (Wc + 1) + x1] - I[y1 * (Wc + 1) + x0] + I[y0 * (Wc + 1) + x0]) / ((x1 - x0) * (y1 - y0));
+    if (L[q] < M[q] - D) fonces++; else if (L[q] > M[q] + D) clairs++;
+  }
+  if (sens === "global") {                                   // capture d'écran nette : seuil fixe, comme la version 1.5
+    let s_ = 0; for (let q = 0; q < n; q++) s_ += L[q];
+    const fonce_ = s_ / n < 110;
+    for (let q = 0, i = 0; q < n; q++, i += 4) { const encre = fonce_ ? L[q] > 170 : L[q] < 110; p[i] = p[i + 1] = p[i + 2] = encre ? 0 : 255; }
+    cx.putImageData(im, 0, 0); return c;
+  }
+  const encreFoncee = sens ? sens === "fonce" : fonces >= clairs;
+  for (let q = 0, i = 0; q < n; q++, i += 4) { const encre = encreFoncee ? L[q] < M[q] - D : L[q] > M[q] + D; p[i] = p[i + 1] = p[i + 2] = encre ? 0 : 255; }
+  cx.putImageData(im, 0, 0);
+  return c;
+}
+async function mots(src, x, y, w, hh, psm, k = 3, sens = null) {
+  const wk = await moteurOcr();
+  await wk.setParameters({ tessedit_pageseg_mode: String(psm) });
+  const r = await wk.recognize(decoupe(src, x, y, w, hh, k, sens));
+  return (r.data.words || []).filter(m => m.text && m.text.trim() && m.confidence > 20)
+    .map(m => ({ t: m.text.trim(), x: x + (m.bbox.x0 + m.bbox.x1) / 2 / k, y: y + (m.bbox.y0 + m.bbox.y1) / 2 / k, x0: x + m.bbox.x0 / k, x1: x + m.bbox.x1 / k }));
+}
+async function analyserPlanning(img, nomCherche, info) {
+  // image de travail (2400 px de large au plus)
+  const kk = Math.min(1, 2400 / img.naturalWidth), W = Math.round(img.naturalWidth * kk), H = Math.round(img.naturalHeight * kk);
+  const src = toile(W, H), sx = src.getContext("2d", { willReadFrequently: true }); sx.drawImage(img, 0, 0, W, H);
+  const P = sx.getImageData(0, 0, W, H).data, pix = (x, y) => { const i = (Math.round(y) * W + Math.round(x)) * 4; return [P[i], P[i + 1], P[i + 2]]; };
+  info("Repérage de la colonne des noms…");
+  const tsv = p => { const [r, g, bb] = p, mx_ = Math.max(r, g, bb), mn_ = Math.min(r, g, bb), d = mx_ - mn_; let hh = 0;
+    if (d) hh = mx_ === r ? ((g - bb) / d) % 6 : mx_ === g ? (bb - r) / d + 2 : (r - g) / d + 4; return [(hh * 60 + 360) % 360, mx_ ? d / mx_ : 0, mx_ / 255]; };
+  // colonne des noms : bande verticale bleue (ou orangée pour les lignes intérim / pénétro) à gauche du planning
+  const estCase = p => { const [hh, s, v] = tsv(p); return s > .35 && v > .25 && ((hh >= 180 && hh <= 225) || (hh <= 30 || hh >= 345)); };
+  let xa = -1, xb = -1;
+  for (let x = 2; x < W * .45; x += 2) {
+    let n_ = 0, tt = 0; for (let y = Math.round(H * .15); y < H * .95; y += 4) { tt++; if (estCase(pix(x, y))) n_++; }
+    if (n_ > .3 * tt) { if (xa < 0) xa = x; xb = x; } else if (xa >= 0 && x - xb > 6) break;
+  }
+  let lx, ya = 0, yb = H;
+  if (xa >= 0 && xb - xa > W * .03) {
+    lx = xb + 3;
+    const xc = Math.round((xa + xb) / 2), dedans = y => estCase(pix(xc - 6, y)) || estCase(pix(xc + 6, y));
+    let meilleur = [0, 0], deb = -1, trou = 0;               // plus longue suite verticale de cases (séparateurs fins tolérés)
+    for (let y = 0; y < H; y++) {
+      if (dedans(y)) { if (deb < 0) deb = y; trou = 0; if (y - deb > meilleur[1] - meilleur[0]) meilleur = [deb, y]; }
+      else if (deb >= 0 && ++trou > 12) { deb = -1; trou = 0; }
+    }
+    [ya, yb] = meilleur;
+  } else {                                                   // repli : premier bord vertical franc
+    lx = Math.round(W * .14);
+    for (let x = Math.round(W * .04); x < W * .4; x++) {
+      let n_ = 0, tt = 0;
+      for (let y = Math.round(H * .2); y < H * .95; y += 3) { tt++; const p1 = pix(x, y), p2 = pix(x - 1, y); if (Math.abs(p1[0] - p2[0]) + Math.abs(p1[1] - p2[1]) + Math.abs(p1[2] - p2[2]) > 90) n_++; }
+      if (n_ > .7 * tt) { lx = x; break; }
+    }
+    xa = 0;
+  }
+  await moteurOcr(info);
+  info("Lecture des noms…");
+  const mn = (await mots(src, xa + 2, ya, Math.max(10, lx - xa - 6), Math.max(10, yb - ya), 11)).filter(m => m.x < lx);
+  const lignes = [];
+  for (const m of mn.sort((a, b) => a.y - b.y)) { const l = lignes.find(l => Math.abs(l.y - m.y) < Math.max(8, H / 150)); if (l) { l.m.push(m); l.y = (l.y + m.y) / 2; } else lignes.push({ y: m.y, m: [m] }); }
+  // lignes de noms : surtout des majuscules (le quadrillage photographié donne des « ee », « — »…)
+  const L = lignes.map(l => ({ y: l.y, t: l.m.sort((a, b) => a.x - b.x).map(m => m.t).join(" ") }))
+    .filter(l => { const lettres = l.t.replace(/[^A-Za-zÀ-ÿ]/g, ""); return lettres.length >= 4 && lettres.replace(/[^A-ZÀ-Ý]/g, "").length >= .6 * lettres.length; });
+  if (!L.length) throw new Error("aucun nom lu dans la colonne de gauche");
+  const cible = sansAccent(nomCherche).replace(/[^A-Z ]/g, "").trim();
+  const dist = (u, v) => { const d = Array.from({ length: u.length + 1 }, (_, i) => [i, ...Array(v.length).fill(0)]); for (let j = 1; j <= v.length; j++) d[0][j] = j;
+    for (let i = 1; i <= u.length; i++) for (let j = 1; j <= v.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (u[i - 1] === v[j - 1] ? 0 : 1)); return d[u.length][v.length]; };
+  const tol = Math.max(1, Math.floor(cible.length / 3));       // photo : une ou deux lettres mal lues (souvent la première)
+  const score = l => { const s_ = sansAccent(l.t).replace(/[^A-Z]/g, ""); let m_ = 99;      // nom cherché dans les lettres de la ligne, espaces ignorés
+    for (let d = 0; d < s_.length; d++) for (const n_ of [cible.length - 1, cible.length, cible.length + 1]) if (n_ > 0 && d + n_ <= s_.length) m_ = Math.min(m_, dist(s_.slice(d, d + n_), cible));
+    return m_; };
+  let i = -1, sMin = 99; L.forEach((l, k) => { const sc = sansAccent(l.t).includes(cible) ? 0 : score(l); if (sc < sMin) { sMin = sc; i = k; } });
+  if (sMin > tol) i = -1;
+  if (i < 0) return { noms: L.map(l => l.t), erreur: "Nom « " + nomCherche + " » introuvable sur la photo." };
+  // hauteur d'une ligne : écart le plus fréquent entre noms voisins (un nom non lu donne un écart double)
+  const ecarts = L.slice(1).map((l, k) => l.y - L[k].y).filter(d => d > 8).sort((p, q) => p - q);
+  let pas = ecarts.length ? ecarts[0] : 60;
+  { const base_ = ecarts.length ? ecarts[ecarts.length >> 1] : 60; const uns = ecarts.filter(d => d < base_ * 1.4); pas = uns.length ? uns[uns.length >> 1] : base_; }
+  const yc = L[i].y, haut = yc - pas / 2, bas = yc + pas / 2;
+  info("Lecture des jours et des heures…");
+  const ytop = Math.max(20, L[0].y - pas * .45), yhaut = Math.max(0, ytop - pas * 1.9);
+  // en-tête : texte foncé (jours, mois) et texte clair (heures sur bandeau foncé) lus séparément
+  const mhF = await mots(src, lx, yhaut, W - lx, ytop - yhaut, 11, 3, "fonce");
+  const mhC = await mots(src, lx, yhaut, W - lx, ytop - yhaut, 11, 3, "clair");
+  const txtTete = mhF.concat(mhC).map(m => m.t).join(" ");
+  const nombres = mm => mm.filter(m => /^\d{1,2}$/.test(m.t)).map(m => ({ ...m, v: +m.t }));
+  const tolY = Math.max(6, pas * .18);                        // une photo penche un peu : tolérance sur l'alignement
+  const groupes = mm => { const g_ = []; for (const m of mm.sort((p, q) => p.x - q.x)) { const g = g_.find(g => Math.abs(g.y - m.y) < tolY); if (g) { g.m.push(m); g.y = m.y; } else g_.push({ y: m.y, m: [m] }); } return g_; };
+  const espacement = g => { const xs = g.m.map(m => m.x).sort((a, b) => a - b), d = xs.slice(1).map((x, i) => x - xs[i]).sort((a, b) => a - b); return d.length ? d[d.length >> 1] : 0; };
+  // jours : un numéro (1 à 31) juste sous un nom de jour (Lun, Mar…), sinon la rangée de nombres la plus espacée
+  const nomsJ = mhF.filter(m => /^(lun|mar|mer|jeu|ven|sam|dim)/i.test(sansAccent(m.t)));
+  let jours = nombres(mhF).filter(m => m.v >= 1 && m.v <= 31 && nomsJ.some(d_ => Math.abs(d_.x - m.x) < pas * .6 && m.y - d_.y > 0 && m.y - d_.y < pas * .6));
+  const gF = groupes(nombres(mhF)).filter(g => g.m.length >= 2);
+  if (jours.length < 2) {
+    if (!gF.length) throw new Error("dates des jours illisibles dans l'en-tête");
+    jours = gF.reduce((a, b) => espacement(b) > espacement(a) ? b : a).m.filter(m => m.v >= 1 && m.v <= 31);
+  }
+  const gj = { m: jours };
+  // heures : rangée la plus serrée de nombres de 0 à 23 (texte clair d'abord)
+  const gHs = groupes(nombres(mhC).filter(m => m.v <= 23)).concat(groupes(nombres(mhF).filter(m => m.v <= 23))).filter(g => g.m.length >= 5);
+  const gh = gHs.length ? gHs.reduce((a, b) => (b.m.length > a.m.length * 1.3 || (b.m.length * 1.3 >= a.m.length && espacement(b) < espacement(a))) ? b : a) : gj;
+  // heures de début et de fin de journée : étiquettes horaires répétées chaque jour
+  // x = a + b * numéro du jour (moindres carrés)
+  const n = jours.length, mx = jours.reduce((s, m) => s + m.x, 0) / n, md = jours.reduce((s, m) => s + m.v, 0) / n;
+  let b = jours.reduce((s, m) => s + (m.x - mx) * (m.v - md), 0) / (jours.reduce((s, m) => s + (m.v - md) ** 2, 0) || 1);
+  if (n < 2 || b < 20) throw new Error("largeur des jours non déterminée");
+  const a = mx - b * md;
+  let cq = 0;                                                // terme du 2e degré : x = a2 + b2·d + cq·d²
+  let a2 = mx, b2 = b;                                       // centre(j) = a2 + b2·(j - md) + cq·(j - md)²
+  if (n >= 4) {
+    const S = k => jours.reduce((s, m) => s + (m.v - md) ** k, 0), Sx = k => jours.reduce((s, m) => s + (m.x - mx) * (m.v - md) ** k, 0);
+    const s2 = S(2), s3 = S(3), s4 = S(4), det = s2 * s4 - s3 * s3 - (s2 * s2 * s2) / n;
+    // moindres carrés sur (d - md) : x - mx = B·u + C·(u² - s2/n)
+    const A11 = s2, A12 = s3, A22 = s4 - s2 * s2 / n, r1 = Sx(1), r2 = Sx(2) - 0, dd = A11 * A22 - A12 * A12;
+    if (Math.abs(dd) > 1e-9) { const B = (r1 * A22 - A12 * r2) / dd, C = (A11 * r2 - A12 * r1) / dd;
+      if (Math.abs(C) < .08 * Math.abs(B)) { cq = C; b2 = B; a2 = mx - C * s2 / n; } }
+  }
+  const centre = j => a2 + b2 * (j - md) + cq * (j - md) ** 2;
+  const debutJour = j => (centre(j - 1) + centre(j)) / 2, finJour = j => (centre(j) + centre(j + 1)) / 2;
+  const jourDe = x => { let j = Math.round((x - a) / b); for (let k = 0; k < 4; k++) { if (x < debutJour(j)) j--; else if (x >= finJour(j)) j++; else break; } return j; };
+  // heures de la journée : étiquettes horaires régulières sous les jours ; heure de début = valeur lue - rang de la case
+  let H0 = 7, H1 = 19;
+  const hw = gh !== gj ? espacement(gh) : 0;
+  if (hw > 4 && b / hw >= 4 && b / hw <= 24) {
+    const nh = Math.round(b / hw), cpt = {};
+    gh.m.filter(m => m.v <= 23).forEach(m => { const j = Math.round((m.x - a) / b), rang = Math.floor((m.x - (a + b * (j - .5))) / (b / nh)); const h0 = m.v - rang; cpt[h0] = (cpt[h0] || 0) + 1; });
+    const best = Object.keys(cpt).map(Number).sort((p, q) => cpt[q] - cpt[p])[0];
+    const total = Object.values(cpt).reduce((s, v) => s + v, 0);       // étiquettes mal lues : il faut une nette majorité
+    if (best != null && cpt[best] >= Math.max(4, .45 * total) && best >= 0 && best + nh <= 24) { H0 = best; H1 = best + nh; }
+  }
+  // mois et année
+  const mt = sansAccent(txtTete), now = new Date();
+  const motsTete = mt.split(/[^A-Z0-9]+/);
+  let mois = MOIS.findIndex(m => motsTete.includes(sansAccent(m))), an = +((mt.match(/20\d\d/) || [])[0] || 0);
+  if (mois < 0) mois = now.getMonth(); if (!an) an = now.getFullYear();
+  const dateDe = jn => { const d = new Date(an, mois, jn); return iso(d); };   // le débordement de mois est géré par Date
+  info("Recherche de vos créneaux…");
+  // teinte d'un pixel coloré (null : blanc, gris, noir, quadrillage)
+  const teinte = p => { const [hh, s, v] = tsv(p); return s < .3 || v < .3 ? null : hh; };
+  const ecart = (a_, b_) => { const d = Math.abs(a_ - b_) % 360; return d > 180 ? 360 - d : d; };
+  // couleurs de fond de colonne (jour férié, week-end) : même teinte au même endroit sur la plupart des lignes du planning
+  const bandes = L.map((l, k) => [k > 0 ? (l.y + L[k - 1].y) / 2 : l.y - pas / 2, k + 1 < L.length ? (l.y + L[k + 1].y) / 2 : l.y + pas / 2]);
+  const fond = new Map();
+  if (bandes.length >= 4) for (let x = lx + 2; x < W; x += 2) {
+    const tt = bandes.map(([h0, h1]) => teinte(pix(x, h0 + .5 * (h1 - h0)))).filter(v => v != null);
+    for (const h_ of tt) if (tt.filter(u => ecart(u, h_) < 15).length >= Math.max(3, bandes.length * .5)) { fond.set(x, h_); break; }
+  }
+  const deFond = (x, h_) => { const f = fond.get(x - (x - lx - 2) % 2); return f != null && ecart(f, h_) < 15; };
+  const segs = [];
+  for (const f of [.3, .5, .72]) {
+    const y = haut + f * (bas - haut); let run = null;
+    for (let x = lx + 2; x < W; x++) {
+      let hh = teinte(pix(x, y)); if (hh != null && deFond(x, hh)) hh = null;
+      if (hh != null && run && ecart(run.h, hh) < 22 && x - run.x1 <= Math.max(10, b * .14)) { run.x1 = x; run.n++; }     // pastilles « Org / Notes » : trou toléré
+      else if (hh != null) { if (run) segs.push(run); run = { x0: x, x1: x, h: hh, n: 1, c: Math.round(hh / 24) % 15, rgb: pix(x + 2, y) }; }
+      else if (run && x - run.x1 > Math.max(10, b * .14)) { segs.push(run); run = null; }
+    }
+    if (run) segs.push(run);
+  }
+  const barres = [];
+  // les plus longues d'abord : un libellé écrit dans la barre coupe la ligne de lecture du haut en morceaux, celle du bas la voit entière
+  for (const s of segs.filter(s => s.x1 - s.x0 > Math.max(12, b / 24)).sort((p, q) => (q.x1 - q.x0) - (p.x1 - p.x0))) {
+    if (barres.some(o => Math.min(o.x1, s.x1) - Math.max(o.x0, s.x0) > .6 * (s.x1 - s.x0))) continue;
+    if (s.n < .45 * (s.x1 - s.x0)) continue;                // segment trop troué : pas une barre
+    barres.push({ ...s, y0: haut, y1: bas });
+  }
+  barres.sort((p, q) => p.x0 - q.x0);
+  const creneaux = [];
+  let k = 0;
+  for (const br of barres) {
+    info("Lecture des libellés (" + (++k) + "/" + barres.length + ")…");
+    let lib = "";
+    // libellé : ligne du haut de la barre (en dessous : pastilles « Org », « Notes » des barres longues) ; toute la hauteur si rien n'est lu
+    const bons = mm => mm.filter(m => /^[A-ZÀ-Ý0-9][A-ZÀ-Ý0-9'’.-]{1,}$|^[A-ZÀ-Ý][a-zà-ÿ]{2,}$/.test(m.t)).reduce((s, m) => s + m.t.length, 0);
+    const lire_ = async fr_ => { const a_ = await mots(src, br.x0, br.y0, br.x1 - br.x0, (br.y1 - br.y0) * fr_, 6), b_ = await mots(src, br.x0, br.y0, br.x1 - br.x0, (br.y1 - br.y0) * fr_, 6, 3, "global"); return bons(b_) > bons(a_) ? b_ : a_; };
+    try { let mm = await lire_(.42); if (!mm.some(m => /[A-Za-zÀ-ÿ0-9]{2,}/.test(m.t))) mm = await lire_(1);
+      const lg = []; for (const m of mm.sort((p, q) => p.y - q.y)) { const l = lg.find(l => Math.abs(l.y - m.y) < Math.max(5, (bas - haut) * .12)); if (l) l.m.push(m); else lg.push({ y: m.y, m: [m] }); }
+      lib = lg.flatMap(l => l.m.sort((p, q) => p.x - q.x)).map(m => m.t).filter(t => /[A-ZÀ-Ý0-9]{2,}|^[A-ZÀ-Ý][a-zà-ÿ]{2,}/.test(t) || /^[-&]$/.test(t)).join(" "); } catch (e) { /* libellé facultatif */ }
+    lib = lib.replace(/^[-&\s]+|[-&\s]+$/g, "").replace(/\s{2,}/g, " ");
+    lib = lib.replace(/\s+-\s*$/, "").trim();
+    // découpage par jour
+    const j0 = jourDe(br.x0), j1 = jourDe(br.x1);
+    for (let j = j0; j <= j1; j++) {
+      const xd = debutJour(j), xf = finJour(j), bj = xf - xd;
+      const u0 = Math.max(br.x0, xd), u1 = Math.min(br.x1, xf);
+      if (u1 - u0 < bj / 48) continue;
+      // les barres commencent un peu après le trait de l'heure et finissent un peu avant : arrondi à la demi-heure
+      const hDeb = H0 + (H1 - H0) * (u0 - xd) / bj - .2, hFin = H0 + (H1 - H0) * (u1 - xd) / bj + .2;
+      const q = v => { const m = Math.round(v * 2) / 2, hh = Math.floor(m), mm = Math.round((m - hh) * 60); return String(Math.max(0, Math.min(23, hh))).padStart(2, "0") + ":" + String(mm).padStart(2, "0"); };
+      const coul = "rgb(" + br.rgb.join(",") + ")";
+      creneaux.push({ date: dateDe(j), debut: q(Math.max(H0, hDeb)), fin: q(Math.min(H1, hFin)), dossier: lib, couleur: coul, type: catCouleur(coul) });
+    }
+  }
+  creneaux.sort((p, q) => (p.date + p.debut).localeCompare(q.date + q.debut));
+  const js = jours.map(m => dateDe(m.v)).concat(creneaux.map(c => c.date)).sort();
+  return { ligne: L[i].t, noms: L.map(l => l.t), du: js[0], au: js[js.length - 1], H0, H1, creneaux, moisLu: mois, anLu: an };
+}
+function importerPlanning() {
+  const inp = h("input", { type: "file", accept: "image/*", style: { display: "none" } });
+  inp.onchange = async () => {
+    const f = inp.files[0]; inp.remove(); if (!f) return;
+    if (!navigator.onLine) return toast("La lecture de la photo a besoin d'une connexion (téléchargement du moteur de lecture la première fois).", 5000);
+    const url = URL.createObjectURL(f), img = new Image();
+    await new Promise((ok, ko) => { img.onload = ok; img.onerror = ko; img.src = url; }).catch(() => null);
+    const etat = h("p", { class: "doux", style: { margin: 0 } }, "Préparation…");
+    const zone = h("div", { style: { display: "flex", flexDirection: "column", gap: "10px" } }, h("img", { src: url, alt: "Planning", style: { borderRadius: "10px", maxHeight: "28vh", objectFit: "contain", background: "#fff" } }), etat);
+    let resultat = null, fermerF = null;
+    const actions = () => resultat && resultat.creneaux ? [h("button", { class: "prim", onclick: () => ajouter() }, "Ajouter au planning")] : [];
+    fermerF = feuille("Planning d'agence", zone, actions);
+    const cases = [];
+    let remplacer = true;
+    function ajouter() {
+      const choisis = resultat.creneaux.filter((c, i) => cases[i] && cases[i].checked);
+      const dates = new Set(resultat.creneaux.map(c => c.date));
+      if (remplacer) PLANNING.creneaux = PLANNING.creneaux.filter(c => !(c.source === "photo" && dates.has(c.date)));
+      choisis.forEach(c => PLANNING.creneaux.push({ id: uid("cr"), date: c.date, debut: c.debut, fin: c.fin, type: catDe(c), dossier: c.dossier, numero: "", adresse: "", obs: "", source: "photo" }));
+      sauverPlanning(); document.querySelector(".feuille") && document.querySelector(".feuille").remove();
+      if (choisis.length) JOUR_TECH = choisis[0].date;
+      toast(choisis.length + " créneau(x) ajouté(s). Complétez numéros et adresses en touchant chaque créneau.", 5000); rendre();
+    }
+    try {
+      resultat = await analyserPlanning(img, PLANNING.nom, t => { etat.textContent = t; });
+      if (resultat.erreur) {
+        etat.textContent = resultat.erreur + " Noms lus : " + resultat.noms.join(", ") + ".";
+        zone.append(h("p", { class: "doux", style: { margin: 0 } }, "Choisissez votre ligne :"), h("div", { class: "chips" }, ...resultat.noms.map(nm => h("button", { class: "chip", onclick: async () => {
+          etat.textContent = "Relecture…"; const r2 = await analyserPlanning(img, nm.split(" ")[0], t => { etat.textContent = t; }); resultat = r2; afficher();
+        } }, nm))));
+        return;
+      }
+      afficher();
+    } catch (e) { etat.textContent = "Lecture impossible : " + (e.message || e) + ". Une capture d'écran nette du planning (plutôt qu'une photo d'écran) donne de meilleurs résultats."; }
+    function afficher() {
+      zone.innerHTML = "";
+      const r = resultat, dD = dIso(r.du), dA = dIso(r.au);
+      zone.append(h("p", { style: { margin: 0 } }, "Ligne lue : ", h("b", {}, r.ligne), " · du " + jourLong(r.du) + " au " + jourLong(r.au) + " " + dA.getFullYear() + " (journées de " + r.H0 + " h à " + r.H1 + " h)."));
+      if (!r.creneaux.length) zone.append(h("div", { class: "vide" }, "Aucun créneau trouvé sur votre ligne."));
+      let jourPrec = "";
+      r.creneaux.forEach((c, i) => {
+        if (c.date !== jourPrec) { zone.append(h("b", { style: { marginTop: "4px" } }, jourLong(c.date))); jourPrec = c.date; }
+        const cb = h("input", { type: "checkbox", checked: true, style: { width: "22px", height: "22px", flex: "0 0 22px" } }); cases[i] = cb;
+        const lib = h("input", { value: c.dossier, placeholder: "libellé", oninput: () => { c.dossier = lib.value; } });
+        const de = h("input", { type: "time", value: c.debut, style: { width: "auto" }, onchange: () => { c.debut = de.value; } });
+        const fi = h("input", { type: "time", value: c.fin, style: { width: "auto" }, onchange: () => { c.fin = fi.value; } });
+        const bande = h("i", { style: { background: CATS[catDe(c)][1] } });
+        zone.append(h("div", { class: "lu" }, cb, bande, h("div", { style: { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "6px" } }, lib, h("div", { class: "ligne" }, de, "→", fi), choixCat(c, () => { bande.style.background = CATS[catDe(c)][1]; }))));
+      });
+      const cbR = h("input", { type: "checkbox", checked: true, onchange: () => { remplacer = cbR.checked; } });
+      zone.append(h("label", { class: "ligne", style: { fontSize: "14px" } }, cbR, "Remplacer les créneaux déjà importés par photo sur ces jours"),
+        h("p", { class: "doux", style: { margin: 0, fontSize: "12.5px" } }, "Vérifiez les heures et les libellés : la lecture est automatique. Les libellés tronqués sur le planning le restent ici."));
+      const pied = document.querySelector(".feuille [role=dialog] > .ligne:last-child");
+      if (pied && !pied.querySelector(".prim")) pied.append(h("button", { class: "prim", onclick: ajouter }, "Ajouter au planning"));
+    }
+  };
+  document.body.append(inp); inp.click();
+}
+
+// ------------------------------------------------------------ export par mail
+function paquet(d) {
+  return { format: "HORUS-terrain", version: 1, app: "HORUS Terrain " + VERSION_APP, exporte_le: new Date().toISOString(),
+    dossier: { numero: d.numero, nom: d.nom, commune: d.commune, operateur: d.operateur, machine: d.machine },
+    sondages: d.sondages.map(s => ({ ...s, lithologie: s.lithologie.map(c => ({ de: c.de, a: c.a, description: c.description, motif: c.motif })) })) };
+}
+function telecharger(fichier) {
+  const url = URL.createObjectURL(fichier), a = h("a", { href: url, download: fichier.name, style: { display: "none" } });
+  document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 4000);
+}
+async function exporter(d) {
+  if (!d.sondages.length) return toast("Aucun sondage à envoyer.");
+  const json = JSON.stringify(paquet(d));
+  const taille = new Blob([json]).size;
+  // .txt / text/plain : Chrome sur Android n'accepte de partager que certains types (le .json y est refusé : « Permission denied »)
+  const nom = "HORUS_terrain_" + (d.numero || "dossier").replace(/[^\w.-]+/g, "_") + "_" + aujourdhui().replace(/-/g, "") + ".txt";
+  const fichier = new File([json], nom, { type: "text/plain" });
+  const mo = (taille / 1048576).toFixed(1).replace(".", ",");
+  const fini = async fermer => { d.exporte = new Date().toISOString(); await ecrire(d); fermer(); rendre(); };
+  const envoyer = async fermer => {
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [fichier] })) {
+        await navigator.share({ files: [fichier], title: nom, text: "Saisies terrain " + (d.numero || "") + " " + (d.nom || "") + " - à importer dans HORUS (Importer…)." });
+        await fini(fermer); toast("Dossier prêt à envoyer."); return;
+      }
+      const dl = window.claude ? await window.claude.use("downloads") : null;
+      if (dl) { await dl.save({ filename: nom, data: fichier }); await fini(fermer); toast("Fichier enregistré : joignez-le à un mail."); return; }
+      throw new Error("partage indisponible");
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+      // repli : téléchargement du fichier (Téléchargements / Fichiers), à joindre au mail
+      try { telecharger(fichier); await fini(fermer); toast("Partage refusé par ce téléphone : fichier enregistré dans Téléchargements (" + nom + "). Joignez-le à un mail.", 6000); }
+      catch (e2) { toast("Envoi impossible ici : " + (e.message || e) + ".", 5000); }
+    }
+  };
+  feuille("Envoyer à HORUS", [h("p", { style: { margin: 0 } }, d.sondages.length + " sondage(s), " + d.sondages.reduce((a, s) => a + s.photos.length, 0) + " photo(s) : fichier de " + mo + " Mo."),
+    h("p", { class: "doux", style: { margin: 0 } }, "Choisissez Mail (ou Outlook, Gmail) dans le menu de partage, puis envoyez-le à votre adresse. Dans HORUS : ouvrez le dossier, « Importer… » et choisissez ce fichier (.txt). Les sondages sont créés ou complétés par leur nom."),
+    taille > 18 * 1048576 ? h("div", { class: "alerte" }, "Fichier volumineux : envoyez en deux fois (moins de photos par envoi).") : null],
+  fermer => [h("button", { onclick: async () => { telecharger(fichier); await fini(fermer); toast("Fichier enregistré dans Téléchargements : " + nom, 5000); } }, "Enregistrer le fichier"),
+    h("button", { class: "prim", onclick: () => envoyer(fermer) }, "Partager…")]);
+}
+
+// ------------------------------------------------------------ démarrage
+(async () => {
+  await ouvrirBase();
+  try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) { /* facultatif */ }
+  const tout = await lireTout();
+  PLANNING = tout.find(x => x.id === "__planning__") || null;
+  DOSSIERS = tout.filter(x => x.id !== "__planning__");
+  if (!DOSSIERS.length && !STORE.ok) DOSSIERS = [];
+  rendre();
+  try { if ("serviceWorker" in navigator && location.protocol === "https:" && !window.claude) navigator.serviceWorker.register("sw.js"); } catch (e) { /* hors PWA */ }
+})();
+</script>
+
+</body></html>
