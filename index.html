@@ -193,7 +193,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.15";
+const VERSION_APP = "1.16";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -1424,7 +1424,7 @@ function vueTech() {
       } }, "Enregistrer"))];
   }
   const P = PLANNING, sem = lundi(JOUR_TECH);
-  barre(h("button", { class: "prim", onclick: () => editerCreneau(null) }, "+ Créneau"), h("button", { class: "vert", onclick: importerPlanning }, "Photo du planning"));
+  barre(h("button", { class: "prim", onclick: () => editerCreneau(null) }, "+ Créneau"), h("button", { class: "vert", onclick: importerPlanning }, "Planning (photo ou PDF)"));
   const legende = h("div", { class: "leg-cat" }, ...Object.values(CATS).slice(0, 3).map(([l, c]) => h("span", {}, h("i", { style: { background: c } }), l)), h("span", { class: "esp" }),
     h("button", { class: "mini", onclick: exporterPlanning }, "Excel…"));
   const jours = [0, 1, 2, 3, 4, 5, 6].map(i => decaler(sem, i));
@@ -1964,15 +1964,153 @@ async function analyserPlanning(img, nomCherche, info) {
   const js = jours.map(m => dateDe(m.v)).concat(creneaux.map(c => c.date)).sort();
   return { ligne: L[i].t, noms: L.map(l => l.t), du: js[0], au: js[js.length - 1], H0, H1, creneaux, moisLu: mois, anLu: an };
 }
+
+/* ---------- lecture d'un planning d'agence exporté en PDF (« Etat_Planning », impression « Microsoft Print to PDF »)
+   Le PDF contient le texte (noms, jours « L 09/11 », heures « 10:0 », libellés) : pas de lecture optique, positions exactes.
+   Les barres sont repérées sur la page rendue : couleur sous chaque libellé, étendue horizontale de cette couleur. */
+const PDFJS_CONF = window.HORUS_PDFJS || { src: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js", worker: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js" };
+async function moteurPdf() {
+  if (!window.pdfjsLib) await new Promise((ok, ko) => { const s = h("script", { src: PDFJS_CONF.src }); s.onload = ok; s.onerror = () => ko(new Error("lecteur PDF non téléchargé (connexion ?)")); document.head.append(s); });
+  if (!window.pdfjsLib) throw new Error("lecteur PDF indisponible");
+  if (PDFJS_CONF.worker && !pdfjsLib.GlobalWorkerOptions.workerSrc) pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_CONF.worker;
+  return window.pdfjsLib;
+}
+async function pagePdf(fichier, info) {
+  const lib = await moteurPdf();
+  info && info("Ouverture du PDF…");
+  const doc = await lib.getDocument({ data: new Uint8Array(await fichier.arrayBuffer()) }).promise;
+  const page = await doc.getPage(1);
+  const v1 = page.getViewport({ scale: 1 }), S = Math.min(4, 2400 / v1.width), vp = page.getViewport({ scale: S });
+  const cv = document.createElement("canvas"); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+  const cx = cv.getContext("2d", { willReadFrequently: true }); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height);
+  info && info("Rendu de la page…");
+  await page.render({ canvasContext: cx, viewport: vp }).promise;
+  const tc = await page.getTextContent();
+  const brut = tc.items.filter(it => it.str && it.str.trim()).map(it => {
+    const m = lib.Util.transform(vp.transform, it.transform), fh = Math.hypot(m[2], m[3]) || 10 * S;
+    return { t: it.str, x: m[4], y: m[5], fh, w: (it.width || 0) * S };
+  });
+  // morceaux d'une même ligne regroupés : « fins » (mots collés) pour les libellés de barres, « phrases » pour les noms et l'en-tête
+  brut.sort((a, b) => Math.abs(a.y - b.y) > 1.5 ? a.y - b.y : a.x - b.x);
+  const grouper = seuil => {
+    const out = [];
+    for (const it of brut) {
+      const p = out[out.length - 1];
+      if (p && Math.abs(p.y - it.y) < 1.5 && it.x >= p.x && it.x - (p.x + p.w) < p.fh * seuil) { p.t += (it.x - (p.x + p.w) > p.fh * .12 ? " " : "") + it.t; p.w = it.x + it.w - p.x; }
+      else out.push({ ...it });
+    }
+    out.forEach(o => { o.t = o.t.replace(/\s+/g, " ").trim(); });
+    return out;
+  };
+  return { cv, cx, txt: grouper(.12), phrases: grouper(.6), S, apercu: cv.toDataURL("image/jpeg", .7) };
+}
+const COUL_MEMO = () => { try { return JSON.parse(localStorage.getItem("horus-couleurs") || "{}"); } catch (e) { return {}; } };
+const hexRgb = c => "#" + c.map(v => v.toString(16).padStart(2, "0")).join("");
+async function analyserPlanningPdf(pg, nomCherche, info) {
+  const { cv, cx, txt, phrases, S } = pg, W = cv.width, H = cv.height, px = cx.getImageData(0, 0, W, H).data;
+  /* jetons d'un motif dans les phrases (« M 10/11 M 11/11 » collés) : position x interpolée sur la longueur du texte */
+  const jetons = re => phrases.flatMap(o => [...o.t.matchAll(re)].map(m => ({ t: m[0], m, x: o.x + o.w * m.index / o.t.length, y: o.y, fh: o.fh })));
+  const coul = (x, y) => { x = Math.max(0, Math.min(W - 1, Math.round(x))); y = Math.max(0, Math.min(H - 1, Math.round(y))); const i = (y * W + x) * 4; return [px[i], px[i + 1], px[i + 2]]; };
+  const ecart = (a, b) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]), Math.abs(a[2] - b[2]));
+  info && info("Lecture du planning…");
+  // jours de l'en-tête : « L 09/11 »… et année (période ou date d'édition)
+  const RJ = /^([LMJVSD])\s*(\d{1,2})\/(\d{1,2})$/;
+  const jours = jetons(/([LMJVSD])\s*(\d{1,2})\/(\d{1,2})(?!\/)/g).sort((a, b) => a.x - b.x);
+  if (jours.length < 1) throw new Error("en-tête des jours introuvable (format de planning non reconnu)");
+  const yJ = jours[0].y, x0 = jours[0].x - S * 1.5;
+  const per = phrases.map(o => o.t.match(/(\d{2})\/(\d{2})\/(\d{4})/)).find(Boolean);
+  let an = per ? +per[3] : new Date().getFullYear(), moisPrec = 0;
+  // graduations horaires sous les jours (« 7:0 », « 10:0 », « 16:0 ») : px par heure, pas des journées, heure de début
+  const ticks = jetons(/(\d{1,2}):\d?\d?/g).filter(o => o.y > yJ && o.y < yJ + 40 * S).map(o => ({ h: parseInt(o.t), x: o.x, y: o.y })).sort((a, b) => a.x - b.x);
+  const med = a => a.length ? a.slice().sort((p, q) => p - q)[Math.floor(a.length / 2)] : null;
+  const ecartsMemeHeure = [];
+  ticks.forEach((k, n) => { const s_ = ticks.slice(n + 1).find(o => o.h === k.h); if (s_) ecartsMemeHeure.push(s_.x - k.x); });
+  // les jours sont équidistants : le pas se lit sur deux graduations de même heure (les libellés « M 17/11 M 18/11 » peuvent être collés)
+  const larg = med(ecartsMemeHeure) || (jours.length > 1 ? med(jours.slice(1).map((j, n) => j.x - jours[n].x)) : 80 * S);
+  const pph = med(ticks.slice(1).map((k, n) => [k, ticks[n]]).filter(([a, b]) => a.h > b.h && a.x - b.x < larg * .9).map(([a, b]) => (a.x - b.x) / (a.h - b.h))) || larg / 12;
+  const xDeb = jours[0].x;
+  const J = jours.map((o, n) => { const [, , jj, mm] = o.m; if (+mm < moisPrec) an++; moisPrec = +mm;
+    return { date: an + "-" + String(mm).padStart(2, "0") + "-" + String(jj).padStart(2, "0"), x: xDeb + n * larg, x1: xDeb + (n + 1) * larg }; });
+  const H0j = med(ticks.map(k => { const n = Math.floor((k.x - xDeb + 2) / larg); return k.h - (k.x - (xDeb + n * larg)) / pph; })) ?? 7;
+  J.forEach(j => { j.h = x => H0j + (x - j.x) / pph; j.H0 = H0j; j.H1 = j.h(j.x1); });
+  const H0 = Math.round(J[0].H0), H1 = Math.round(J[0].H1);
+  // noms : colonne de gauche, en majuscules, sous l'en-tête
+  const yGrille = Math.max(...ticks.map(k => k.y || 0), yJ) + 4 * S;
+  const noms = phrases.filter(o => o.x + o.w < x0 && o.y > yJ + 10 * S && /^[A-ZÀ-Ý][A-ZÀ-Ý' .-]{2,}$/.test(o.t)).sort((a, b) => a.y - b.y);
+  if (!noms.length) throw new Error("colonne des noms introuvable");
+  const cible = sansAccent(nomCherche || "").replace(/[^A-Z ]/g, "").trim();
+  const i = noms.findIndex(o => cible && sansAccent(o.t).includes(cible));
+  if (i < 0) return { noms: noms.map(o => o.t), erreur: "Nom « " + nomCherche + " » introuvable dans le PDF." };
+  const ys = noms.map(o => o.y - o.fh * .35), pas = noms.length > 1 ? ys.slice(1).map((y, k) => y - ys[k]).sort((a, b) => a - b)[Math.floor((noms.length - 1) / 2)] : 60 * S;
+  const haut = ys[i] - pas / 2, bas = ys[i] + pas / 2;
+  // barres : un libellé = une barre ; étendue = couleur sous le libellé, de part et d'autre
+  const dansLigne = txt.filter(o => o.x >= x0 && o.y > haut + 2 && o.y < bas + o.fh * .2 && o.y > yGrille).sort((a, b) => a.y - b.y || a.x - b.x);
+  const barres = [];
+  const sat = c => { const mx = Math.max(...c), mn = Math.min(...c); return mx < 60 ? 0 : (mx - mn) / mx; };
+  const etendue = (o) => {
+    const yS = o.y + o.fh * .18, c0 = coul(o.x - 2, o.y - o.fh * .4);
+    let L = o.x - 2, R = o.x + o.w + 1;
+    while (L > x0 && ecart(coul(L - 1, yS), c0) < 40 && ecart(coul(L - 1, o.y - o.fh * .4), c0) < 40) L--;
+    while (R < W - 1 && ecart(coul(R + 1, yS), c0) < 40 && ecart(coul(R + 1, o.y - o.fh * .4), c0) < 40) R++;
+    return { L, R, c0 };
+  };
+  for (const o of dansLigne) {
+    const e = etendue(o), mil = (e.L + e.R) / 2;
+    const deja = barres.find(b => mil >= b.L - 2 && mil <= b.R + 2 && o.y > b.y - 2);       // mot suivant ou ligne suivante dans la même barre
+    const autreBarre = deja && ecart(e.c0, deja.c) > 40 && sat(e.c0) > .3;                  // barre colorée posée dans une autre (ex. AUDIT dans « Administratif »)
+    if (deja && !autreBarre) { deja.lib += (deja.lib ? " " : "") + o.t; continue; }
+    barres.push({ L: e.L, R: e.R, y: o.y, lib: o.t, c: e.c0 });
+  }
+  // barres colorées sans libellé (étiquette trop courte pour le texte)
+  const yH = barres.length ? barres.map(b => b.y).sort((a, b) => a - b)[0] - 4 * S : haut + pas * .2;
+  for (let x = x0; x < W; x++) {
+    const c = coul(x, yH);
+    if (sat(c) < .35 || barres.some(b => x >= b.L - 1 && x <= b.R + 1)) continue;
+    let R = x; while (R + 1 < W && ecart(coul(R + 1, yH), c) < 40) R++;
+    if (R - x > 3 * S) barres.push({ L: x, R, y: yH, lib: "", c });
+    x = R;
+  }
+  // barres -> créneaux (un créneau sur plusieurs jours si la barre déborde de la journée)
+  const jourDe = x => J.findIndex(j => x >= j.x - 1 && x < j.x1 + 1);
+  const q = v => { const hh = Math.round(v * 2) / 2; return String(Math.floor(hh)).padStart(2, "0") + ":" + (hh % 1 ? "30" : "00"); };
+  const memo = COUL_MEMO(), creneaux = [];
+  for (const b of barres.sort((a, b) => a.L - b.L)) {
+    const d0 = jourDe(b.L + 1), d1 = jourDe(b.R - 1);
+    if (d0 < 0 || d1 < 0) continue;
+    const j0 = J[d0], j1 = J[d1];
+    const hd = Math.max(j0.H0, j0.h(b.L)), hf = Math.min(j1.H1, j1.h(b.R));
+    if (d0 === d1 && hf - hd < .25) continue;
+    const hex = hexRgb(b.c), rgb = "rgb(" + b.c.join(",") + ")", base = { dossier: b.lib, couleur: rgb, hex, type: memo[hex] || catCouleur(rgb) };
+    if (d1 === d0) { creneaux.push({ ...base, date: j0.date, debut: q(hd), fin: q(hf) }); continue; }
+    // barre sur plusieurs jours : journées entières -> un créneau « du … au … » ; sinon un créneau par jour (début et fin réels)
+    if (hd - j0.H0 <= 2 && j1.H1 - hf <= 2.5)
+      creneaux.push({ ...base, date: j0.date, date_fin: j1.date, debut: q(hd), fin: q(hf), sauf_we: ![0, 6].includes(dIso(j0.date).getDay()) });
+    else for (let d = d0; d <= d1; d++) {
+      const j = J[d];
+      if (d !== d0 && [0, 6].includes(dIso(j.date).getDay())) continue;
+      creneaux.push({ ...base, date: j.date, debut: q(d === d0 ? hd : j.H0), fin: q(d === d1 ? hf : j.H1) });
+    }
+  }
+  creneaux.sort((p, q_) => (p.date + p.debut).localeCompare(q_.date + q_.debut));
+  return { ligne: noms[i].t, noms: noms.map(o => o.t), du: J[0].date, au: J[J.length - 1].date, H0, H1, creneaux, pdf: true };
+}
 function importerPlanning() {
-  const inp = h("input", { type: "file", accept: "image/*", style: { display: "none" } });
+  const inp = h("input", { type: "file", accept: "image/*,application/pdf,.pdf", style: { display: "none" } });
   inp.onchange = async () => {
     const f = inp.files[0]; inp.remove(); if (!f) return;
-    if (!navigator.onLine) return toast("La lecture de la photo a besoin d'une connexion (téléchargement du moteur de lecture la première fois).", 5000);
+    const estPdf = /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name);
+    if (!navigator.onLine && !window.pdfjsLib && !window.HORUS_OCR) return toast("La lecture du planning a besoin d'une connexion (téléchargement du lecteur la première fois).", 5000);
     const url = URL.createObjectURL(f), img = new Image();
-    await new Promise((ok, ko) => { img.onload = ok; img.onerror = ko; img.src = url; }).catch(() => null);
+    if (!estPdf) await new Promise((ok, ko) => { img.onload = ok; img.onerror = ko; img.src = url; }).catch(() => null);
     const etat = h("p", { class: "doux", style: { margin: 0 } }, "Préparation…");
-    const zone = h("div", { style: { display: "flex", flexDirection: "column", gap: "10px" } }, h("img", { src: url, alt: "Planning", style: { borderRadius: "10px", maxHeight: "28vh", objectFit: "contain", background: "#fff" } }), etat);
+    const vignette = h("img", { src: estPdf ? "" : url, alt: "Planning", style: { borderRadius: "10px", maxHeight: "28vh", objectFit: "contain", background: "#fff", display: estPdf ? "none" : "" } });
+    const zone = h("div", { style: { display: "flex", flexDirection: "column", gap: "10px" } }, vignette, etat);
+    let pagePlanning = null;
+    const analyser = async (nom, info) => {
+      if (!estPdf) return analyserPlanning(img, nom, info);
+      if (!pagePlanning) { pagePlanning = await pagePdf(f, info); vignette.src = pagePlanning.apercu; vignette.style.display = ""; }
+      return analyserPlanningPdf(pagePlanning, nom, info);
+    };
     let resultat = null, fermerF = null;
     const actions = () => resultat && resultat.creneaux ? [h("button", { class: "prim", onclick: () => ajouter() }, "Ajouter au planning")] : [];
     fermerF = feuille("Planning d'agence", zone, actions);
@@ -1982,22 +2120,24 @@ function importerPlanning() {
       const choisis = resultat.creneaux.filter((c, i) => cases[i] && cases[i].checked);
       const dates = new Set(resultat.creneaux.map(c => c.date));
       if (remplacer) PLANNING.creneaux = PLANNING.creneaux.filter(c => !(c.source === "photo" && dates.has(c.date)));
-      choisis.forEach(c => PLANNING.creneaux.push({ id: uid("cr"), date: c.date, debut: c.debut, fin: c.fin, type: catDe(c), dossier: c.dossier, numero: "", adresse: "", obs: "", source: "photo" }));
+      choisis.forEach(c => { const n = { id: uid("cr"), date: c.date, debut: c.debut, fin: c.fin, type: catDe(c), dossier: c.dossier, numero: "", adresse: "", obs: "", source: "photo" };
+        if (c.date_fin) { n.date_fin = c.date_fin; n.sauf_we = c.sauf_we !== false; }
+        PLANNING.creneaux.push(n); });
       sauverPlanning(); document.querySelector(".feuille") && document.querySelector(".feuille").remove();
       if (choisis.length) JOUR_TECH = choisis[0].date;
       toast(choisis.length + " créneau(x) ajouté(s). Complétez numéros et adresses en touchant chaque créneau.", 5000); rendre();
     }
     try {
-      resultat = await analyserPlanning(img, PLANNING.nom, t => { etat.textContent = t; });
+      resultat = await analyser(PLANNING.nom, t => { etat.textContent = t; });
       if (resultat.erreur) {
         etat.textContent = resultat.erreur + " Noms lus : " + resultat.noms.join(", ") + ".";
         zone.append(h("p", { class: "doux", style: { margin: 0 } }, "Choisissez votre ligne :"), h("div", { class: "chips" }, ...resultat.noms.map(nm => h("button", { class: "chip", onclick: async () => {
-          etat.textContent = "Relecture…"; const r2 = await analyserPlanning(img, nm.split(" ")[0], t => { etat.textContent = t; }); resultat = r2; afficher();
+          etat.textContent = "Relecture…"; const r2 = await analyser(estPdf ? nm : nm.split(" ")[0], t => { etat.textContent = t; }); resultat = r2; afficher();
         } }, nm))));
         return;
       }
       afficher();
-    } catch (e) { etat.textContent = "Lecture impossible : " + (e.message || e) + ". Une capture d'écran nette du planning (plutôt qu'une photo d'écran) donne de meilleurs résultats."; }
+    } catch (e) { etat.textContent = "Lecture impossible : " + (e.message || e) + "." + (estPdf ? " Le PDF doit être l'export « Planning » de l'agence (une page, noms à gauche, jours en haut)." : " Une capture d'écran nette du planning (plutôt qu'une photo d'écran) donne de meilleurs résultats."); }
     function afficher() {
       zone.innerHTML = "";
       const r = resultat, dD = dIso(r.du), dA = dIso(r.au);
@@ -2006,16 +2146,24 @@ function importerPlanning() {
       let jourPrec = "";
       r.creneaux.forEach((c, i) => {
         if (c.date !== jourPrec) { zone.append(h("b", { style: { marginTop: "4px" } }, jourLong(c.date))); jourPrec = c.date; }
+        const periode = c.date_fin ? h("span", { class: "pill", style: { alignSelf: "flex-start" } }, "du " + dateFr(c.date) + " au " + dateFr(c.date_fin) + (c.sauf_we ? ", sauf week-end" : "")) : null;
         const cb = h("input", { type: "checkbox", checked: true, style: { width: "22px", height: "22px", flex: "0 0 22px" } }); cases[i] = cb;
         const lib = h("input", { value: c.dossier, placeholder: "libellé", oninput: () => { c.dossier = lib.value; } });
         const de = h("input", { type: "time", value: c.debut, style: { width: "auto" }, onchange: () => { c.debut = de.value; } });
         const fi = h("input", { type: "time", value: c.fin, style: { width: "auto" }, onchange: () => { c.fin = fi.value; } });
         const bande = h("i", { style: { background: CATS[catDe(c)][1] } });
-        zone.append(h("div", { class: "lu" }, cb, bande, h("div", { style: { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "6px" } }, lib, h("div", { class: "ligne" }, de, "→", fi), choixCat(c, () => { bande.style.background = CATS[catDe(c)][1]; }))));
+        c._bande = bande;
+        zone.append(h("div", { class: "lu" }, cb, bande, h("div", { style: { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "6px" } }, lib, periode, h("div", { class: "ligne" }, de, "→", fi),
+          choixCat(c, () => {      // même couleur sur le planning = même type : appliqué aux autres lignes et retenu pour les prochaines lectures
+            bande.style.background = CATS[catDe(c)][1];
+            if (c.hex) { const m = COUL_MEMO(); m[c.hex] = c.type; try { localStorage.setItem("horus-couleurs", JSON.stringify(m)); } catch (e) { /* */ }
+              r.creneaux.forEach(x => { if (x !== c && x.hex === c.hex && x.type !== c.type) { x.type = c.type; if (x._bande) x._bande.style.background = CATS[catDe(x)][1]; } }); afficherTypes(); }
+          }))));
       });
+      function afficherTypes() { zone.querySelectorAll(".lu").forEach((el, k) => { const x = r.creneaux[k]; el.querySelectorAll(".chip.cat").forEach((b, n) => { const on = Object.keys(CATS)[n] === catDe(x); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); }); }); }
       const cbR = h("input", { type: "checkbox", checked: true, onchange: () => { remplacer = cbR.checked; } });
       zone.append(h("label", { class: "ligne", style: { fontSize: "14px" } }, cbR, "Remplacer les créneaux déjà importés par photo sur ces jours"),
-        h("p", { class: "doux", style: { margin: 0, fontSize: "12.5px" } }, "Vérifiez les heures et les libellés : la lecture est automatique. Les libellés tronqués sur le planning le restent ici."));
+        h("p", { class: "doux", style: { margin: 0, fontSize: "12.5px" } }, "Vérifiez les heures et les libellés : la lecture est automatique. Les libellés tronqués sur le planning le restent ici. Changer le type d'une ligne l'applique à toutes les barres de la même couleur, et HORUS s'en souvient."));
       const pied = document.querySelector(".feuille [role=dialog] > .ligne:last-child");
       if (pied && !pied.querySelector(".prim")) pied.append(h("button", { class: "prim", onclick: ajouter }, "Ajouter au planning"));
     }
