@@ -80,6 +80,7 @@ button.mini{min-height:36px;font-size:14px;padding:0 10px;border-radius:9px}
 .passe{display:flex;flex-direction:column;gap:5px;padding:8px;border:1px solid var(--ligne);border-radius:10px}
 .passe input.num{width:76px;flex:0 0 auto}
 .passe textarea{min-height:44px}
+.passe button.symb{min-width:44px;font-size:17px;font-weight:700;color:var(--nuit, #223558)}
 .photos figcaption{font-size:11.5px;color:var(--doux);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .barre{position:fixed;left:0;right:0;bottom:0;z-index:6;background:color-mix(in srgb,var(--carte) 92%,transparent);backdrop-filter:blur(10px);
   border-top:1px solid var(--ligne);padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
@@ -203,7 +204,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.20";
+const VERSION_APP = "1.21";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -784,11 +785,16 @@ function passesCarotte(p) {
     p.passes.forEach((q, k) => {
       const ta = h("textarea", { rows: 2, placeholder: "ex. sable fin marron clair, humide", oninput: () => { q.description = ta.value; resume(); } });
       ta.value = q.description || "";
+      // Ø au curseur (pas de raccourci au clavier du téléphone) ; le bouton ne prend pas le focus : le clavier reste ouvert
+      const symb = c => h("button", { class: "mini symb", type: "button", "aria-label": "Insérer " + c, onpointerdown: e => e.preventDefault(), onclick: () => {
+        const d0 = document.activeElement === ta ? ta.selectionStart : ta.value.length, d1 = document.activeElement === ta ? ta.selectionEnd : d0;
+        ta.value = ta.value.slice(0, d0) + c + ta.value.slice(d1); ta.focus(); ta.setSelectionRange(d0 + c.length, d0 + c.length);
+        q.description = ta.value; resume(); } }, c);
       bloc.append(h("div", { class: "passe" },
         h("div", { class: "ligne", style: { gap: "6px", flexWrap: "nowrap", alignItems: "center" } },
           h("span", { class: "doux" }, "De"), nb(q, "de"), h("span", { class: "doux" }, "à"),
           nb(q, "a", () => { const sv = p.passes[k + 1]; if (sv && q.a != null) { sv.de = q.a; dessiner(); } }), h("span", { class: "doux" }, "m"),
-          h("span", { class: "esp" }),
+          h("span", { class: "esp" }), symb("Ø"),
           h("button", { class: "mini dang", "aria-label": "Retirer cette passe", onclick: () => { p.passes.splice(k, 1); resume(); dessiner(); } }, "×")),
         ta));
     });
