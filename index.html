@@ -199,7 +199,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.18";
+const VERSION_APP = "1.19";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -552,6 +552,7 @@ const piezoVide = () => ({ hauteur_tete: null, prof_tube: null, crepine_de: null
 function vueSondage() {
   const d = D(), s = S();
   if (!s) { PILE.pop(); return vueDossier(); }
+  if (suivreProfLitho(s)) sauver(d);
   entete(s.nom, TYPES[s.type][0] + (d.numero ? " · " + d.numero : ""));
   const prevu = creneauxDe(d).filter(c => sondagesDe(c, d).includes(s));
   const photoProf = ["SC", "PM", "T"].includes(s.type);
@@ -564,7 +565,7 @@ function vueSondage() {
       "Prévu au planning : " + prevu.map(c => multiJours(c) ? "du " + dateFr(c.date) + " au " + dateFr(c.date_fin) : dateFr(c.date)).join(" ; ") + " ›") : null,
     h("div", { class: "carte" },
       h("div", { class: "g2" }, champ("Nom", s, "nom", { caps: "characters", apres: () => entete(s.nom, TYPES[s.type][0]) }), champ("Type", s, "type", { type: "select", options: Object.entries(TYPES).map(([k, v]) => [k, k + " - " + v[0]]), apres: () => { if (s.type === "PZ" && !s.piezo) s.piezo = piezoVide(); if (s.type === "RF" && !s.rf) s.rf = rfDefaut(); rendre(); } })),
-      h("div", { class: "g2" }, champ("Date", s, "date", { type: "date" }), champ("Profondeur atteinte (m)", s, "prof", { type: "num" })),
+      h("div", { class: "g2" }, champ("Date", s, "date", { type: "date" }), champ("Profondeur atteinte (m)", s, "prof", { type: "num", apres: () => { if (s.prof == null) { s.prof_auto = null; suivreProfLitho(s); rendre(); } else { const b = s.lithologie.map(c => +c.a).filter(isFinite); s.prof_auto = b.length && s.prof === Math.max(...b) ? s.prof : null; } } })),
       h("div", { class: "g2" }, champ("Opérateur", s, "operateur"), champ("Machine", s, "machine")),
       h("div", { class: "ligne" }, zoneGps, h("span", { class: "esp" }), h("button", { class: "mini", onclick: () => releverGps(s, majGps) }, s.lat == null ? "Relever la position" : "Relever à nouveau")),
       h("button", { class: "mini", onclick: () => aller({ v: "carte", d: d.id, s: s.id }) }, "Cartes au sondage : géologie, sismique, argiles, nappe, inondation, parcelle"),
@@ -675,6 +676,17 @@ function motifDe(o) {
   if (o.mat === "sable" && sec.includes("graveleux")) return "sable_graveleux";
   return o.mat;
 }
+/* profondeur atteinte = base de la lithologie, tant qu'elle n'a pas été changée à la main : elle suit si elle est vide,
+   égale à la dernière valeur reprise (prof_auto) ou déjà égale à la base ; une valeur saisie différente est conservée. */
+function suivreProfLitho(s) {
+  const bases = (s.lithologie || []).map(c => c.a).filter(v => v != null && v !== "" && isFinite(+v)).map(Number);
+  if (!bases.length) return false;
+  const base = Math.max(...bases), p = s.prof == null || s.prof === "" ? null : +s.prof;
+  if (p == null || (s.prof_auto != null && p === +s.prof_auto) || p === base) {
+    const change = p !== base; s.prof = base; s.prof_auto = base; return change;
+  }
+  return false;
+}
 function editerCouche(s, i) {
   const L = s.lithologie, c = i == null ? null : L[i];
   const prec = i == null ? L[L.length - 1] : L[i - 1];
@@ -703,13 +715,13 @@ function editerCouche(s, i) {
     h("div", { class: "g2" }, champ("De (m)", v, "de", { type: "num" }), champ("À (m)", v, "a", { type: "num" })),
     zChips, h("label", { class: "ch" }, "Complément", inPlus),
     h("label", { class: "ch" }, h("span", { class: "ligne" }, "Description", h("span", { class: "esp" }), h("button", { class: "mini", type: "button", onclick: () => { manuel = false; majDesc(); } }, "Recomposer")), zDesc),
-    i != null ? h("button", { class: "dang", onclick: () => { L.splice(i, 1); sauver(); document.querySelector(".feuille").remove(); rendre(); } }, "Supprimer cette couche") : null,
+    i != null ? h("button", { class: "dang", onclick: () => { L.splice(i, 1); suivreProfLitho(s); sauver(); document.querySelector(".feuille").remove(); rendre(); } }, "Supprimer cette couche") : null,
   ], f => [h("button", { class: "prim", onclick: () => {
     if (v.a == null || v.de == null || v.a <= v.de) return toast("La base de la couche doit être sous son toit.");
     const couche = { de: v.de, a: v.a, description: (v.description || "").trim(), motif: o.mat ? motifDe(o) : (c && c.motif) || null, guide: o.mat ? o : null };
     if (i == null) L.push(couche); else L[i] = couche;
     L.sort((x, y) => x.de - y.de);
-    if (s.prof == null || v.a > s.prof) s.prof = v.a;
+    if (!suivreProfLitho(s) && (s.prof == null || v.a > s.prof)) s.prof = v.a;
     sauver(); f(); rendre();
   } }, "Enregistrer")]);
 }
