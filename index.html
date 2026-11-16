@@ -199,7 +199,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.17";
+const VERSION_APP = "1.18";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -414,7 +414,7 @@ function planningDossier(d) {
     const ss = sondagesDe(c, d);
     return h("div", { class: "it", style: { borderLeft: "5px solid " + CATS[catDe(c)][1] }, onclick: () => allerTech(prochain) },
       h("div", { class: "t" }, h("b", {}, js.length > 1 ? "Du " + dateFr(c.date) + " au " + dateFr(c.date_fin) + " (" + js.length + " j)" : jourLong(c.date)),
-        h("span", {}, (c.debut || "") + (c.fin ? " – " + c.fin : "") + " · " + CATS[catDe(c)][0] + (c.sondages && c.sondages.length ? " · " + ss.map(s => s.nom).join(", ") : ""))),
+        h("span", {}, (horairesVariables(c) ? "heures selon le jour" : (c.debut || "") + (c.fin ? " – " + c.fin : "")) + " · " + CATS[catDe(c)][0] + (c.sondages && c.sondages.length ? " · " + ss.map(s => s.nom).join(", ") : ""))),
       js.every(j => j < auj) ? h("span", { class: "pill" }, "passé") : js.includes(auj) ? h("span", { class: "pill ok" }, "aujourd'hui") : null,
       h("span", { class: "fl" }, "›"));
   })))];
@@ -451,7 +451,7 @@ function recevoirPlan() {
       let s = d.sondages.find(x => x.nom.toLowerCase() === nom.toLowerCase());
       if (!s) { s = sondageVide(d, nom, TYPES[t.type] ? t.type : "SP"); d.sondages.push(s); crees++; }
       if (t.lat != null && t.lon != null && isFinite(t.lat) && isFinite(t.lon)) { if (s.lat !== +t.lat || s.lon !== +t.lon) places++; s.lat = +t.lat; s.lon = +t.lon; s.prec = null; }
-      if (s.z == null && t.z != null) s.z = +t.z;
+      if (s.z == null && t.z != null) { s.z = +t.z; s.z_origine = t.z_origine || null; }
       if (s.prof == null && t.prof != null) s.prof = +t.prof;
       if (t.etiquette && isFinite(t.etiquette.dx) && isFinite(t.etiquette.dy)) s.etiquette = { dx: +t.etiquette.dx, dy: +t.etiquette.dy };
     });
@@ -569,7 +569,10 @@ function vueSondage() {
       h("div", { class: "ligne" }, zoneGps, h("span", { class: "esp" }), h("button", { class: "mini", onclick: () => releverGps(s, majGps) }, s.lat == null ? "Relever la position" : "Relever à nouveau")),
       h("button", { class: "mini", onclick: () => aller({ v: "carte", d: d.id, s: s.id }) }, "Cartes au sondage : géologie, sismique, argiles, nappe, inondation, parcelle"),
       s.contexte ? h("div", { class: "doux", style: { fontSize: "13px" } }, ...Object.values(s.contexte).map(c => h("div", {}, "• " + c.texte))) : null,
-      champ("Cote du terrain Z (m NGF, si connue)", s, "z", { type: "num" })),
+      h("div", { class: "ligne", style: { alignItems: "flex-end", gap: "8px", flexWrap: "nowrap" } },
+        h("div", { style: { flex: 1, minWidth: 0 } }, champ("Cote du terrain Z (m NGF)", s, "z", { type: "num", apres: () => { s.z_origine = s.z == null ? null : "saisie"; } })),
+        h("button", { class: "mini", style: { marginBottom: "2px" }, title: "Altitude du terrain naturel au point GPS, MNT RGE ALTI de l'IGN", onclick: () => zIgn(s, rendre) }, "Z IGN")),
+      s.z_origine === "IGN RGE ALTI" ? h("p", { class: "doux", style: { margin: 0, fontSize: "12.5px" } }, "Z lu sur le MNT RGE ALTI de l'IGN au point GPS (terrain naturel, précision de l'ordre de 0,2 à 1 m ; dépend aussi de la précision GPS).") : null),
     h("h2", {}, "Lithologie"),
     h("div", { class: "carte" }, s.lithologie.length ? h("div", {}, ...s.lithologie.map((c, i) => {
       return h("div", { class: "couche", onclick: () => editerCouche(s, i) },
@@ -614,12 +617,33 @@ function ajouterVenue(s) {
   feuille("Venue d'eau", [champ("Profondeur (m)", o, "prof", { type: "num" }), champ("Précision", o, "txt", { ph: "ex. venue faible, perte de boue" })],
     f => [h("button", { class: "prim", onclick: () => { if (o.prof == null) return toast("Indiquez la profondeur."); s.venues.push(o); sauver(); f(); rendre(); } }, "Ajouter")]);
 }
+/* altitude du terrain naturel : MNT RGE ALTI® de l'IGN (pas 1 m, NGF-IGN69 ; IGN78 en Corse), service de calcul
+   altimétrique de la Géoplateforme. pts = [[lat, lon], …] -> [z (m) ou null hors couverture], ou exception hors réseau. */
+async function altitudeIgn(pts) {
+  const url = "https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json?resource=ign_rge_alti_wld&zonly=true&delimiter=%7C"
+    + "&lon=" + pts.map(p => (+p[1]).toFixed(7)).join("%7C") + "&lat=" + pts.map(p => (+p[0]).toFixed(7)).join("%7C");
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("service IGN : " + r.status);
+  const j = await r.json();
+  return (j.elevations || []).map(e => { const z = typeof e === "object" && e ? e.z : e; return z == null || z <= -9999 ? null : Math.round(z * 100) / 100; });
+}
+async function zIgn(s, maj, auto) {
+  if (s.lat == null) return toast("Relevez d'abord la position du sondage.");
+  try {
+    const [z] = await altitudeIgn([[s.lat, s.lon]]);
+    if (z == null) return toast("Pas d'altitude IGN à cet endroit (hors couverture).");
+    s.z = z; s.z_origine = "IGN RGE ALTI"; sauver(); maj && maj();
+    toast((auto ? "Position et altitude relevées : " : "Altitude IGN : ") + "Z = " + fr(z, 2) + " m NGF (terrain naturel, MNT RGE ALTI ; à vérifier si le terrain a été remanié).", 5000);
+  } catch (e) { if (!auto) toast(navigator.onLine ? "Service d'altitude IGN injoignable pour le moment." : "Hors connexion : altitude IGN indisponible."); }
+}
 function releverGps(s, maj) {
   if (!navigator.geolocation) return toast("Position indisponible sur cet appareil.");
   toast("Recherche de la position…", 2000);
   navigator.geolocation.getCurrentPosition(p => {
     s.lat = +p.coords.latitude.toFixed(7); s.lon = +p.coords.longitude.toFixed(7); s.prec = p.coords.accuracy;
-    sauver(); maj(); toast(p.coords.accuracy > 15 ? "Position relevée à ± " + Math.round(p.coords.accuracy) + " m : relevez à nouveau à découvert si possible." : "Position relevée.");
+    sauver(); maj();
+    if (s.z == null && navigator.onLine) zIgn(s, maj, true);           // altitude du terrain proposée automatiquement (IGN)
+    toast(p.coords.accuracy > 15 ? "Position relevée à ± " + Math.round(p.coords.accuracy) + " m : relevez à nouveau à découvert si possible." : "Position relevée.");
   }, e => toast(e.code === 1 ? "Accès à la position refusé : autorisez-le dans Réglages > Confidentialité > Service de localisation." : "Position indisponible ici (" + e.message + ")."),
   { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
 }
@@ -1573,7 +1597,7 @@ function vueTech() {
   const legende = h("div", { class: "leg-cat" }, ...Object.values(CATS).slice(0, 3).map(([l, c]) => h("span", {}, h("i", { style: { background: c } }), l)), h("span", { class: "esp" }),
     h("button", { class: "mini", onclick: exporterPlanning }, "Excel…"));
   const jours = [0, 1, 2, 3, 4, 5, 6].map(i => decaler(sem, i));
-  const duJour = P.creneaux.filter(c => surJour(c, JOUR_TECH)).sort((a, b) => (a.debut || "").localeCompare(b.debut || ""));
+  const duJour = P.creneaux.filter(c => surJour(c, JOUR_TECH)).sort((a, b) => heuresDe(a, JOUR_TECH).debut.localeCompare(heuresDe(b, JOUR_TECH).debut));
   const dS = dIso(sem), dF = dIso(decaler(sem, 6));
   return [ongletsAccueil(),
     h("div", { class: "ligne", style: { padding: "0 2px" } }, h("h3", {}, (P.prenom ? P.prenom + " " : "") + P.nom), h("span", { class: "esp" }),
@@ -1584,12 +1608,12 @@ function vueTech() {
       h("div", { class: "ligne" }, h("button", { class: "mini", "aria-label": "Semaine précédente", onclick: () => { JOUR_TECH = decaler(JOUR_TECH, -7); rendre(); } }, "‹"),
         h("b", { style: { flex: 1, textAlign: "center" } }, "Semaine du " + dS.getDate() + (dS.getMonth() !== dF.getMonth() ? " " + MOIS[dS.getMonth()] : "") + " au " + dF.getDate() + " " + MOIS[dF.getMonth()]),
         h("button", { class: "mini", "aria-label": "Semaine suivante", onclick: () => { JOUR_TECH = decaler(JOUR_TECH, 7); rendre(); } }, "›")),
-      h("div", { class: "semaine" }, ...jours.map(j => { const d = dIso(j), cj = P.creneaux.filter(c => surJour(c, j)).sort((a, b) => (a.debut || "").localeCompare(b.debut || "")), n = cj.length;
+      h("div", { class: "semaine" }, ...jours.map(j => { const d = dIso(j), cj = P.creneaux.filter(c => surJour(c, j)), n = cj.length;
         return h("button", { class: (j === JOUR_TECH ? "on " : "") + (j === aujourdhui() ? "auj" : ""), "aria-pressed": j === JOUR_TECH ? "true" : "false", onclick: () => { JOUR_TECH = j; rendre(); } },
           h("small", {}, JOURS_COURTS[d.getDay()]), h("b", {}, d.getDate()), h("span", { class: "pts" }, ...(n ? [...new Set(cj.map(catDe))] : ["vide"]).map(k => h("i", { style: { background: k === "vide" ? "transparent" : CATS[k][1] } })))); })), legende),
     h("h2", {}, jourLong(JOUR_TECH) + (JOUR_TECH === aujourdhui() ? " · aujourd'hui" : "")),
     h("div", { class: "carte" }, duJour.length ? h("div", { class: "liste" }, ...duJour.map(c => h("div", { class: "creneau", style: { borderLeftColor: CATS[catDe(c)][1] }, onclick: () => editerCreneau(c) },
-      h("div", { class: "heures" }, h("b", {}, c.debut || "–"), h("span", {}, c.fin || "")),
+      h("div", { class: "heures" }, h("b", {}, heuresDe(c, JOUR_TECH).debut || "–"), h("span", {}, heuresDe(c, JOUR_TECH).fin)),
       h("div", { class: "t" }, h("small", { class: "cat-lib" }, CATS[catDe(c)][0]), h("b", {}, (c.numero ? c.numero + " · " : "") + (c.dossier || "(sans libellé)")),
         c.adresse ? h("span", {}, c.adresse) : null, c.obs ? h("span", { class: "doux" }, c.obs) : null,
         multiJours(c) ? (() => { const js = joursDe(c); return h("span", { class: "pill", style: { alignSelf: "flex-start" } },
@@ -1660,18 +1684,46 @@ function itineraire(adresse, choisir) {
 }
 function editerCreneau(c) {
   const neuf = !c, jourVu = JOUR_TECH;
-  const o = c ? { ...c, type: catDe(c), exclus: [...(c.exclus || [])] } : { id: uid("cr"), date: JOUR_TECH, date_fin: "", sauf_we: true, exclus: [], debut: "08:00", fin: "12:00", type: "terrain", dossier: "", numero: "", adresse: "", obs: "", source: "manuel" };
+  const o = c ? { ...c, type: catDe(c), exclus: [...(c.exclus || [])], horaires: JSON.parse(JSON.stringify(c.horaires || {})) } : { id: uid("cr"), date: JOUR_TECH, date_fin: "", sauf_we: true, exclus: [], debut: "08:00", fin: "12:00", type: "terrain", dossier: "", numero: "", adresse: "", obs: "", source: "manuel" };
   if (o.sauf_we == null) o.sauf_we = true;
   if (!o.date_fin) o.date_fin = "";
+  if (!o.horaires) o.horaires = {};
   const resume = h("p", { class: "doux", style: { margin: 0 } });
+  /* heures jour par jour (créneau sur plusieurs jours) : chaque jour reprend les heures habituelles sauf s'il est modifié */
+  const zoneJours = h("div", { class: "carte", style: { padding: "10px", gap: "6px" } });
+  const dessinerJours = () => {
+    zoneJours.innerHTML = "";
+    const m = o.date_fin && o.date_fin > o.date;
+    zoneJours.style.display = m ? "" : "none";
+    if (!m) return;
+    const js = joursDe(o);
+    zoneJours.append(h("b", { style: { fontSize: "14px" } }, "Heures de chaque jour"),
+      h("p", { class: "doux", style: { margin: 0, fontSize: "12.5px" } }, "Par défaut, chaque jour prend les heures habituelles ci-dessus. Modifiez un jour pour lui donner ses propres heures (arrivée l'après-midi, départ plus tôt le dernier jour…)."));
+    js.forEach(j => {
+      const hj = heuresDe(o, j), propre = !!o.horaires[j];
+      const maj = (cle, v) => {
+        const x = o.horaires[j] || { debut: o.debut, fin: o.fin };
+        x[cle] = v;
+        if (x.debut === o.debut && x.fin === o.fin) delete o.horaires[j]; else o.horaires[j] = x;
+        dessinerJours(); majResume(false);
+      };
+      const de = h("input", { type: "time", value: hj.debut, style: { width: "auto", minWidth: 0, flex: "1 1 0" }, onchange: () => maj("debut", de.value) });
+      const fi = h("input", { type: "time", value: hj.fin, style: { width: "auto", minWidth: 0, flex: "1 1 0" }, onchange: () => maj("fin", fi.value) });
+      zoneJours.append(h("div", { class: "ligne", style: { gap: "6px", flexWrap: "nowrap" } },
+        h("span", { style: { flex: "0 0 auto", fontSize: "14px", fontWeight: propre ? 700 : 400, whiteSpace: "nowrap" } }, (() => { const x = dIso(j); return JOURS_COURTS[x.getDay()] + " " + x.getDate() + "/" + String(x.getMonth() + 1).padStart(2, "0"); })()),
+        de, "→", fi,
+        propre ? h("button", { class: "mini", type: "button", title: "Revenir aux heures habituelles", "aria-label": "Revenir aux heures habituelles", onclick: () => { delete o.horaires[j]; dessinerJours(); majResume(false); } }, "↺") : h("span", { style: { width: "34px" } })));
+    });
+  };
   const cbWe = h("input", { type: "checkbox", checked: !!o.sauf_we, style: { width: "22px", height: "22px" }, onchange: () => { o.sauf_we = cbWe.checked; majResume(); } });
   const ligneWe = h("label", { class: "ligne", style: { fontSize: "14px" } }, cbWe, "Sauf samedi et dimanche");
-  const majResume = () => {
+  const majResume = (jours = true) => {
     const m = o.date_fin && o.date_fin > o.date;
     ligneWe.style.display = m ? "" : "none";
-    if (!m) { resume.textContent = "Un seul jour. Indiquez « Au » pour un chantier de plusieurs jours : le créneau sera répété chaque jour, aux mêmes heures."; return; }
-    const n = joursDe(o).length;
-    resume.textContent = n + " jour" + (n > 1 ? "s" : "") + " de " + (o.debut || "?") + " à " + (o.fin || "?") + (o.exclus.length ? " (" + o.exclus.length + " jour(s) retiré(s))" : "") + ".";
+    if (jours) dessinerJours();
+    if (!m) { resume.textContent = "Un seul jour. Indiquez « Au » pour un chantier de plusieurs jours : le créneau sera répété chaque jour ; les heures se règlent ensuite jour par jour."; return; }
+    const js = joursDe(o), n = js.length, nv = js.filter(j => o.horaires[j]).length;
+    resume.textContent = n + " jour" + (n > 1 ? "s" : "") + ", habituellement de " + (o.debut || "?") + " à " + (o.fin || "?") + (nv ? " ; " + nv + " jour(s) avec ses propres heures" : "") + (o.exclus.length ? " (" + o.exclus.length + " jour(s) retiré(s))" : "") + ".";
   };
   const cDu = champ("Du", o, "date", { type: "date", apres: () => { if (o.date_fin && o.date_fin < o.date) { o.date_fin = ""; iAu.value = ""; } majResume(); } });
   const cAu = champ("Au (facultatif)", o, "date_fin", { type: "date", apres: majResume });
@@ -1715,6 +1767,7 @@ function editerCreneau(c) {
     choixCat(o),
     h("div", { class: "g2" }, cDu, cAu), ligneWe, resume,
     h("div", { class: "g2" }, champ("Début", o, "debut", { type: "time", apres: () => majResume() }), champ("Fin", o, "fin", { type: "time", apres: () => majResume() })),
+    zoneJours,
     h("div", { class: "g2" }, champ("Dossier / chantier", o, "dossier", { ph: "ST SEVER - Couvent", apres: () => majLien() }), champ("N° de dossier", o, "numero", { caps: "characters", apres: () => majLien() })),
     champ("Adresse", o, "adresse", { ph: "rue, commune", apres: () => majLien() }),
     o.adresse ? h("button", { class: "mini", type: "button", onclick: () => itineraire(o.adresse, true) }, "Itinéraire (choisir l'application)") : null,
@@ -1727,11 +1780,18 @@ function editerCreneau(c) {
     if (!o.date) return toast("Indiquez la date de début.");
     if (o.date_fin && o.date_fin < o.date) return toast("La date de fin doit suivre la date de début.");
     if (o.debut && o.fin && o.fin <= o.debut) return toast("La fin doit suivre le début.");
-    if (!o.date_fin || o.date_fin === o.date) { delete o.date_fin; o.exclus = []; }
+    if (!o.date_fin || o.date_fin === o.date) { delete o.date_fin; o.exclus = []; o.horaires = {}; }
     else {
       o.exclus = o.exclus.filter(j => j >= o.date && j <= o.date_fin);
-      if (!joursDe(o).length) return toast("Aucun jour retenu sur cette période (week-ends exclus ?).");
+      const js = joursDe(o);
+      if (!js.length) return toast("Aucun jour retenu sur cette période (week-ends exclus ?).");
+      for (const j of Object.keys(o.horaires)) {
+        const x = o.horaires[j];
+        if (!js.includes(j) || (x.debut === o.debut && x.fin === o.fin)) { delete o.horaires[j]; continue; }
+        if (x.debut && x.fin && x.fin <= x.debut) return toast("Le " + dateFr(j) + " : la fin doit suivre le début.");
+      }
     }
+    if (!Object.keys(o.horaires).length) delete o.horaires;
     if (!o.exclus || !o.exclus.length) delete o.exclus;
     if (!o.dossier_id) delete o.dossier_id;
     if (!o.sondages || !o.sondages.length) delete o.sondages;
@@ -1783,7 +1843,11 @@ function dossiersSuggeres(c) {
 }
 function allerTech(jour) { ONGLET = "tech"; try { localStorage.setItem("horus-onglet", "tech"); } catch (e) { /* */ } JOUR_TECH = jour; PILE = [{ v: "accueil" }]; rendre(); window.scrollTo(0, 0); }
 /* un créneau par jour réel (export Excel) */
-const parJour = (L, du, au) => L.flatMap(c => joursDe(c).filter(j => j >= du && j <= au).map(j => ({ ...c, date: j })));
+/* horaires : heures propres à certains jours d'un créneau sur plusieurs jours ({ "AAAA-MM-JJ": {debut, fin} }) ;
+   les autres jours gardent les heures habituelles du créneau (debut, fin). */
+const heuresDe = (c, j) => { const x = c.horaires && c.horaires[j]; return { debut: (x && x.debut) || c.debut || "", fin: (x && x.fin) || c.fin || "" }; };
+const horairesVariables = c => multiJours(c) && !!c.horaires && Object.keys(c.horaires).some(j => surJour(c, j));
+const parJour = (L, du, au) => L.flatMap(c => joursDe(c).filter(j => j >= du && j <= au).map(j => ({ ...c, date: j, ...heuresDe(c, j) })));
 /* catégorie d'une barre lue sur la photo d'après sa teinte : violet = labo, bleu / cyan = bureau, jaune = terrain */
 function catCouleur(rgb) {
   const [r, g, b] = (rgb.match(/\d+/g) || [0, 0, 0]).map(Number), mx = Math.max(r, g, b), mn = Math.min(r, g, b);
@@ -2227,14 +2291,14 @@ async function analyserPlanningPdf(pg, nomCherche, info) {
     if (d0 === d1 && hf - hd < .25) continue;
     const hex = hexRgb(b.c), rgb = "rgb(" + b.c.join(",") + ")", base = { dossier: b.lib, couleur: rgb, hex, type: memo[hex] || catCouleur(rgb) };
     if (d1 === d0) { creneaux.push({ ...base, date: j0.date, debut: q(hd), fin: q(hf) }); continue; }
-    // barre sur plusieurs jours : journées entières -> un créneau « du … au … » ; sinon un créneau par jour (début et fin réels)
-    if (hd - j0.H0 <= 2 && j1.H1 - hf <= 2.5)
-      creneaux.push({ ...base, date: j0.date, date_fin: j1.date, debut: q(hd), fin: q(hf), sauf_we: ![0, 6].includes(dIso(j0.date).getDay()) });
-    else for (let d = d0; d <= d1; d++) {
-      const j = J[d];
-      if (d !== d0 && [0, 6].includes(dIso(j.date).getDay())) continue;
-      creneaux.push({ ...base, date: j.date, debut: q(d === d0 ? hd : j.H0), fin: q(d === d1 ? hf : j.H1) });
-    }
+    // barre sur plusieurs jours : un créneau « du … au … » ; journées entières -> mêmes heures chaque jour, sinon heures
+    // habituelles = journée complète et heures propres au premier et au dernier jour (début et fin réels)
+    const sauf_we = ![0, 6].includes(dIso(j0.date).getDay());
+    if (hd - j0.H0 <= 2 && j1.H1 - hf <= 2.5) { creneaux.push({ ...base, date: j0.date, date_fin: j1.date, debut: q(hd), fin: q(hf), sauf_we }); continue; }
+    const debut = q(j0.H0), fin = q(j1.H1), horaires = {};
+    if (q(hd) !== debut) horaires[j0.date] = { debut: q(hd), fin };
+    if (q(hf) !== fin) horaires[j1.date] = { debut, fin: q(hf) };
+    creneaux.push({ ...base, date: j0.date, date_fin: j1.date, debut, fin, sauf_we, horaires });
   }
   creneaux.sort((p, q_) => (p.date + p.debut).localeCompare(q_.date + q_.debut));
   return { ligne: noms[i].t, noms: noms.map(o => o.t), du: J[0].date, au: J[J.length - 1].date, H0, H1, creneaux, pdf: true };
@@ -2266,7 +2330,7 @@ function importerPlanning() {
       const dates = new Set(resultat.creneaux.map(c => c.date));
       if (remplacer) PLANNING.creneaux = PLANNING.creneaux.filter(c => !(c.source === "photo" && dates.has(c.date)));
       choisis.forEach(c => { const n = { id: uid("cr"), date: c.date, debut: c.debut, fin: c.fin, type: catDe(c), dossier: c.dossier, numero: "", adresse: "", obs: "", source: "photo" };
-        if (c.date_fin) { n.date_fin = c.date_fin; n.sauf_we = c.sauf_we !== false; }
+        if (c.date_fin) { n.date_fin = c.date_fin; n.sauf_we = c.sauf_we !== false; if (c.horaires && Object.keys(c.horaires).length) n.horaires = c.horaires; }
         PLANNING.creneaux.push(n); });
       sauverPlanning(); document.querySelector(".feuille") && document.querySelector(".feuille").remove();
       if (choisis.length) JOUR_TECH = choisis[0].date;
@@ -2291,7 +2355,8 @@ function importerPlanning() {
       let jourPrec = "";
       r.creneaux.forEach((c, i) => {
         if (c.date !== jourPrec) { zone.append(h("b", { style: { marginTop: "4px" } }, jourLong(c.date))); jourPrec = c.date; }
-        const periode = c.date_fin ? h("span", { class: "pill", style: { alignSelf: "flex-start" } }, "du " + dateFr(c.date) + " au " + dateFr(c.date_fin) + (c.sauf_we ? ", sauf week-end" : "")) : null;
+        const periode = c.date_fin ? h("span", { class: "pill", style: { alignSelf: "flex-start" } }, "du " + dateFr(c.date) + " au " + dateFr(c.date_fin) + (c.sauf_we ? ", sauf week-end" : "")
+          + (c.horaires ? Object.entries(c.horaires).map(([j, x]) => " · le " + dateFr(j) + " : " + x.debut + "–" + x.fin).join("") : "")) : null;
         const cb = h("input", { type: "checkbox", checked: true, style: { width: "22px", height: "22px", flex: "0 0 22px" } }); cases[i] = cb;
         const lib = h("input", { value: c.dossier, placeholder: "libellé", oninput: () => { c.dossier = lib.value; } });
         const de = h("input", { type: "time", value: c.debut, style: { width: "auto" }, onchange: () => { c.debut = de.value; } });
