@@ -107,6 +107,12 @@ button.mini{min-height:36px;font-size:14px;padding:0 10px;border-radius:9px}
 .rep-moi{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#2F80ED;border:3px solid #fff;box-shadow:0 0 0 8px rgba(47,128,237,.25)}
 .echelle-carte{position:absolute;left:10px;bottom:10px;display:flex;flex-direction:column;gap:2px;font:700 12px var(--corps);color:#223558;background:rgba(255,255,255,.85);padding:4px 6px;border-radius:6px;pointer-events:none}
 .echelle-carte i{display:block;height:6px;border:2px solid #223558;border-top:0}
+.rep-son.sym{z-index:2;width:26px;height:26px;margin:-13px 0 0 -13px;border:0;border-radius:0;background:none;box-shadow:none;line-height:0;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+.rep-etiq{position:absolute;z-index:1;transform:translate(-50%,-50%);font:700 12.5px/1 var(--corps);color:#fff;background:rgba(34,53,88,.88);padding:4px 7px;border-radius:5px;white-space:nowrap;touch-action:none}
+.rep-etiq.tire{background:#223558;box-shadow:0 0 0 2px #A0C555}
+.traits-plan{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:1}
+.traits-plan line{stroke-dasharray:5 3}
+.chip.son svg{flex:0 0 auto}
 .rep-nom{position:absolute;font:700 12px var(--corps);color:#223558;background:rgba(255,255,255,.85);padding:1px 5px;border-radius:5px;pointer-events:none}
 .cmd-carte{position:absolute;right:max(10px,env(safe-area-inset-right,0px));top:10px;display:flex;flex-direction:column;gap:6px}
 .cmd-carte button{width:44px;height:44px;padding:0;font-size:22px;border-radius:12px;background:#fff;color:#223558;border:0;box-shadow:0 1px 4px rgba(0,0,0,.3)}
@@ -193,7 +199,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.16";
+const VERSION_APP = "1.17";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -340,7 +346,7 @@ function confirmer(texte, oui, libelle = "Supprimer") {
 function vueAccueil() {
   if (ONGLET === "tech") return vueTech();
   entete("HORUS Terrain", "Sondages · GINGER CEBTP");
-  barre(h("button", { class: "prim", onclick: nouveauDossier }, "+ Nouveau dossier"));
+  barre(h("button", { class: "prim", onclick: nouveauDossier }, "+ Nouveau dossier"), h("button", { onclick: recevoirPlan, title: "Plan préparé dans HORUS sur l'ordinateur (Implantation › Envoyer le plan au téléphone)" }, "Recevoir un plan HORUS"));
   const out = [ongletsAccueil()];
   if (!STORE.ok) out.push(h("div", { class: "alerte" }, "Le stockage de cet appareil est indisponible : vos saisies seront perdues à la fermeture. Exportez avant de quitter."));
   const tri = DOSSIERS.slice().sort((a, b) => (b.maj || "").localeCompare(a.maj || ""));
@@ -423,6 +429,39 @@ function resume(s) {
   if (s.piezo && s.piezo.releves.length) p.push(s.piezo.releves.length + " relevé(s) piézo");
   return p.join(" · ") || TYPES[s.type][0];
 }
+const sondageVide = (d, nom, type) => ({ id: uid("s"), nom, type, date: aujourdhui(), operateur: d.operateur || "", machine: d.machine || "", lat: null, lon: null, prec: null, z: null, prof: null,
+  nappe: null, venues: [], lithologie: [], outils: [], tubages: [], photos: [], commentaire: "", piezo: type === "PZ" ? piezoVide() : null, rf: type === "RF" ? rfDefaut() : null,
+  porchet: type === "EP" ? porchetVide() : null, etiquette: null });
+/* plan préparé dans HORUS (Implantation › « Envoyer le plan au téléphone ») : dossier retrouvé par son n° d'affaire ou créé,
+   sondages retrouvés par leur nom ou créés ; positions (levé ou placement HORUS), types et étiquettes repris */
+function recevoirPlan() {
+  const inp = h("input", { type: "file", accept: ".txt,.json,text/plain,application/json", style: { display: "none" } });
+  inp.onchange = async () => {
+    const f = inp.files[0]; inp.remove(); if (!f) return;
+    let j = null; try { j = JSON.parse(await f.text()); } catch (e) { /* illisible */ }
+    if (!j || j.format !== "HORUS-plan") return toast(j && j.format === "HORUS-terrain" ? "Ce fichier est un envoi du téléphone vers HORUS, pas un plan préparé dans HORUS." : "Fichier non reconnu : choisissez le plan envoyé par HORUS (HORUS_plan_….txt).", 5000);
+    const dj = j.dossier || {}, norm = x => String(x || "").toUpperCase().replace(/[\s._\-]+/g, "");
+    let d = dj.numero ? DOSSIERS.find(x => norm(x.numero) === norm(dj.numero)) : null;
+    const nouveau = !d;
+    if (!d) { d = { id: uid("dos"), numero: dj.numero || "", nom: dj.nom || "", commune: dj.commune || "", operateur: "", machine: "", cree: new Date().toISOString(), sondages: [] }; DOSSIERS.push(d); }
+    else { if (!d.nom && dj.nom) d.nom = dj.nom; if (!d.commune && dj.commune) d.commune = dj.commune; }
+    let crees = 0, places = 0;
+    (j.sondages || []).forEach(t => {
+      const nom = String(t.nom || "").trim(); if (!nom) return;
+      let s = d.sondages.find(x => x.nom.toLowerCase() === nom.toLowerCase());
+      if (!s) { s = sondageVide(d, nom, TYPES[t.type] ? t.type : "SP"); d.sondages.push(s); crees++; }
+      if (t.lat != null && t.lon != null && isFinite(t.lat) && isFinite(t.lon)) { if (s.lat !== +t.lat || s.lon !== +t.lon) places++; s.lat = +t.lat; s.lon = +t.lon; s.prec = null; }
+      if (s.z == null && t.z != null) s.z = +t.z;
+      if (s.prof == null && t.prof != null) s.prof = +t.prof;
+      if (t.etiquette && isFinite(t.etiquette.dx) && isFinite(t.etiquette.dy)) s.etiquette = { dx: +t.etiquette.dx, dy: +t.etiquette.dy };
+    });
+    d.maj = new Date().toISOString();
+    await ecrire(d);
+    toast((nouveau ? "Dossier créé" : "Dossier mis à jour") + " : " + crees + " sondage(s) créé(s), " + places + " position(s) reprise(s) de HORUS.", 5000);
+    PILE = [{ v: "accueil" }, { v: "dossier", d: d.id }]; aller({ v: "plan", d: d.id });
+  };
+  document.body.append(inp); inp.click();
+}
 function nouveauSondage(d) {
   const derType = d.sondages.length ? d.sondages[d.sondages.length - 1].type : "SP";
   const o = { type: derType, nom: "" };
@@ -434,8 +473,7 @@ function nouveauSondage(d) {
     const nom = o.nom.trim();
     if (!nom) return toast("Donnez un nom au sondage.");
     if (d.sondages.some(x => x.nom.toLowerCase() === nom.toLowerCase())) return toast("Le sondage " + nom + " existe déjà.");
-    const s = { id: uid("s"), nom, type: o.type, date: aujourdhui(), operateur: d.operateur || "", machine: d.machine || "", lat: null, lon: null, prec: null, z: null, prof: null,
-      nappe: null, venues: [], lithologie: [], outils: [], tubages: [], photos: [], commentaire: "", piezo: o.type === "PZ" ? piezoVide() : null, rf: o.type === "RF" ? rfDefaut() : null, porchet: o.type === "EP" ? porchetVide() : null };
+    const s = sondageVide(d, nom, o.type);
     d.sondages.push(s); await ecrire(d); fermer(); aller({ v: "sondage", d: d.id, s: s.id });
   } }, "Créer")]);
 }
@@ -1200,6 +1238,58 @@ function echelleCarte(lat, z, px_ = 90) {
   const p = 10 ** Math.floor(Math.log10(brut)), m = [1, 2, 5, 10].map(k => k * p).filter(x => x <= brut).pop() || p;
   return { m, l: m / mpp, txt: m >= 1000 ? fr(m / 1000, 0) + " km" : (m >= 1 ? Math.round(m) + " m" : fr(m, 1) + " m") };
 }
+/* ---- symboles des sondages (légende de l'agence) : couleur du type, forme selon le type.
+   SP cercle à quarts pleins, T et EP cercle pointé, CPT cercle à triangle, SC cercle à secteurs gauche/droite,
+   RF carré quadrillé, PD triangle plein pointe en bas, PM carré à damier, SD disque plein, PZ cercle à moitié basse pleine.
+   Même dessin dans HORUS (ginsond/web/carte.js) et dans le plan PDF (fiche.py, _symbole) : à garder identique. */
+function symboleSondage(type, c, taille) {
+  c = c || "#EB9C20"; const t = taille || 20;
+  const o = `fill="#fff" stroke="${c}" stroke-width="1.9"`, pl = `fill="${c}"`;
+  const rond = `<circle r="9" fill="#fff" opacity=".85"/><circle r="7" ${o}/>`, carre = `<rect x="-8.6" y="-8.6" width="17.2" height="17.2" rx="1.5" fill="#fff" opacity=".85"/><rect x="-6.8" y="-6.8" width="13.6" height="13.6" ${o}/>`;
+  const f = {
+    SP: rond + `<path d="M0 0V-6.1A6.1 6.1 0 0 1 6.1 0ZM0 0V6.1A6.1 6.1 0 0 1-6.1 0Z" ${pl}/>`,
+    T: rond + `<circle r="2.7" ${pl}/>`,
+    CPT: rond + `<path d="M-5.3-2.9H5.3L0 6.1Z" fill="none" stroke="${c}" stroke-width="1.5" stroke-linejoin="round"/>`,
+    SC: rond + `<path d="M0 0L-4.3-4.3A6.1 6.1 0 0 0-4.3 4.3ZM0 0L4.3-4.3A6.1 6.1 0 0 1 4.3 4.3Z" ${pl}/>`,
+    RF: carre + `<path d="M0-6.8V6.8M-6.8 0H6.8" stroke="${c}" stroke-width="1.7"/>`,
+    PD: `<path d="M-8.2-6.6H8.2L0 8.6Z" ${pl} stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>`,
+    PM: carre + `<path d="M-5.9-5.9H0V0H-5.9ZM0 0H5.9V5.9H0Z" ${pl}/>`,
+    SD: `<circle r="7.4" ${pl} stroke="#fff" stroke-width="2.2"/>`,
+    PZ: rond + `<path d="M-6.1 0A6.1 6.1 0 0 0 6.1 0Z" ${pl}/>`,
+  };
+  f.EP = f.T;
+  return `<svg width="${t}" height="${t}" viewBox="-10 -10 20 20" aria-hidden="true">${f[type] || f.SD}</svg>`;
+}
+/* Placement des étiquettes : celles déplacées à la main (p.etiq = {dx, dy}, centre de l'étiquette par rapport au point, en px écran)
+   restent où on les a mises ; les autres prennent la première position libre autour du point (droite, gauche, dessus, dessous…).
+   L = [{sx, sy, w, h, etiq}] -> ajoute dx, dy, trait (rappel en pointillés : [x1, y1, x2, y2] ou null). */
+function placerEtiquettes(L, rayon) {
+  const R = rayon || 10, boites = [];
+  const gene = (b, moi) => boites.filter(q => !(b[2] < q[0] || b[0] > q[2] || b[3] < q[1] || b[1] > q[3])).length * 3     // étiquette sur étiquette
+    + L.filter(q => q !== moi && q.sx > b[0] - R && q.sx < b[2] + R && q.sy > b[1] - R && q.sy < b[3] + R).length * 4;      // étiquette sur un autre sondage
+  const boite = (e, dx, dy) => [e.sx + dx - e.w / 2, e.sy + dy - e.h / 2, e.sx + dx + e.w / 2, e.sy + dy + e.h / 2];
+  L.filter(e => e.etiq).forEach(e => { e.dx = e.etiq.dx; e.dy = e.etiq.dy; boites.push(boite(e, e.dx, e.dy)); });
+  L.filter(e => !e.etiq).forEach(e => {
+    let choix = null;
+    for (let k = 0; k < 4 && !(choix && choix[2] === 0); k++) {       // couronnes de plus en plus éloignées
+      const ex = k * 16, ey = k * 13, a = R + 2 + e.w / 2 + ex, v = R + 1 + e.h / 2 + ey, d = R - 3 + e.w / 2 + ex;
+      for (const [dx, dy] of [[a, 0], [-a, 0], [0, -v], [0, v], [d, -v], [d, v], [-d, -v], [-d, v]]) {
+        const g = gene(boite(e, dx, dy), e) + k * 0.5;
+        if (!choix || g < choix[2]) choix = [dx, dy, g];
+        if (g === 0) break;
+      }
+    }
+    [e.dx, e.dy] = choix; boites.push(boite(e, e.dx, e.dy));
+  });
+  L.forEach(e => {
+    e.trait = null;
+    const b = boite(e, e.dx, e.dy), qx = Math.max(b[0], Math.min(e.sx, b[2])), qy = Math.max(b[1], Math.min(e.sy, b[3]));
+    const dist = Math.hypot(qx - e.sx, qy - e.sy);
+    if (dist > R + 6) e.trait = [e.sx + (qx - e.sx) / dist * (R - 1), e.sy + (qy - e.sy) / dist * (R - 1), qx, qy];
+  });
+  return L;
+}
+
 function vuePlan() {
   const d = D();
   const v = vue();
@@ -1228,6 +1318,36 @@ function vuePlan() {
     const ox = cx == null ? 0 : cx - W / 2, oy = cy == null ? 0 : cy - H / 2;      // zoom autour du point visé (molette)
     v.c = [(v.c[0] + ox) * k - ox, (v.c[1] + oy) * k - oy]; v.z = nz; dessiner();
   };
+  let marques = null;
+  /* sondages : symbole de leur type + étiquette (glisser pour la déplacer, rappel en pointillés ; double toucher : position automatique) */
+  function dessinerMarques() {
+    if (!marques) return;
+    marques.innerHTML = "";
+    const W = boite.clientWidth || 360, H = boite.clientHeight || 420, x0 = v.c[0] - W / 2, y0 = v.c[1] - H / 2;
+    const L = loc.map(s => {
+      const [a, b] = px(s.lat, s.lon, v.z), sx = a - x0, sy = b - y0;
+      const m = h("button", { class: "rep-son sym", "aria-label": "Ouvrir " + s.nom, style: { left: sx + "px", top: sy + "px" },
+        onclick: e => { e.stopPropagation(); aller({ v: "sondage", d: d.id, s: s.id }); } });
+      m.innerHTML = symboleSondage(s.type, TYPES[s.type][1], 26);
+      const el = h("span", { class: "rep-etiq", "data-sid": s.id, style: { visibility: "hidden" } }, s.nom);
+      marques.append(m, el);
+      return { s, el, sx, sy, etiq: s.etiquette && isFinite(s.etiquette.dx) ? s.etiquette : null };
+    });
+    L.forEach(q => { q.w = q.el.offsetWidth || 40; q.h = q.el.offsetHeight || 20; });
+    placerEtiquettes(L, 13);
+    const NS = "http://www.w3.org/2000/svg", tr = document.createElementNS(NS, "svg");
+    tr.setAttribute("class", "traits-plan");
+    L.forEach(q => {
+      Object.assign(q.el.style, { left: (q.sx + q.dx) + "px", top: (q.sy + q.dy) + "px", visibility: "visible" });
+      q.el.dataset.dx = q.dx; q.el.dataset.dy = q.dy;
+      if (q.trait) for (const [coul, ep] of [["rgba(0,0,0,.55)", 3.4], ["#fff", 1.7]]) {
+        const l = document.createElementNS(NS, "line");
+        ["x1", "y1", "x2", "y2"].forEach((k, i) => l.setAttribute(k, q.trait[i]));
+        l.setAttribute("stroke", coul); l.setAttribute("stroke-width", ep); tr.append(l);
+      }
+    });
+    marques.prepend(tr);
+  }
   function dessiner() {
     calque.innerHTML = ""; calque.style.transform = "";
     const W = boite.clientWidth || 360, H = boite.clientHeight || 420, f = FONDS[v.fond];
@@ -1237,28 +1357,52 @@ function vuePlan() {
       if (ty < 0 || ty >= nf) continue;
       calque.append(h("img", { src: urlTuile(f, zf, ((tx % nf) + nf) % nf, ty), alt: "", draggable: false, style: { left: (tx * tf - x0) + "px", top: (ty * tf - y0) + "px", width: tf + "px", height: tf + "px" } }));
     }
-    loc.forEach(s => {
-      const [a, b] = px(s.lat, s.lon, v.z);
-      calque.append(h("button", { class: "rep-son", "aria-label": "Ouvrir " + s.nom, style: { left: (a - x0) + "px", top: (b - y0) + "px", background: TYPES[s.type][1] },
-        onclick: e => { e.stopPropagation(); aller({ v: "sondage", d: d.id, s: s.id }); } }),
-        h("span", { class: "rep-nom", style: { left: (a - x0 + 11) + "px", top: (b - y0 - 10) + "px" } }, s.nom));
-    });
+    marques = h("div", { style: { position: "absolute", inset: 0 } }); calque.append(marques);
+    dessinerMarques();
     if (v.moi) { const [a, b] = px(v.moi[0], v.moi[1], v.z); calque.append(h("div", { class: "rep-moi", style: { left: (a - x0) + "px", top: (b - y0) + "px" } })); }
     const centre = latlon(v.c[0], v.c[1], v.z), e = echelleCarte(centre[0], v.z);
     ech.innerHTML = ""; ech.append(h("i", { style: { width: e.l + "px" } }), h("span", {}, e.txt));
   }
   // gestes : glisser, pincer (un toucher sur un repère ouvre le sondage)
-  const pts = new Map(); let dep = null, pince = null;
+  const pts = new Map(); let dep = null, pince = null, tire = null;
+  const sondageEtiq = el => d.sondages.find(x => x.id === el.dataset.sid);
   boite.addEventListener("pointerdown", e => { if (e.target.closest(".cmd-carte") || e.target.closest(".rep-son")) return;
+    const et = e.target.closest(".rep-etiq");
+    if (et && !pts.size) {                     // une étiquette : on la déplace (au lieu de la carte)
+      boite.setPointerCapture(e.pointerId);
+      tire = { id: e.pointerId, el: et, s: sondageEtiq(et), x: e.clientX, y: e.clientY, dx0: +et.dataset.dx, dy0: +et.dataset.dy, bouge: false };
+      et.classList.add("tire"); return;
+    }
     boite.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
     if (pts.size === 1) dep = { x: e.clientX, y: e.clientY, bouge: false };
     if (pts.size === 2) { const [a, b] = [...pts.values()]; pince = { d0: Math.hypot(a[0] - b[0], a[1] - b[1]), r: 1 }; dep = null; } });
   boite.addEventListener("pointermove", e => {
+    if (tire && e.pointerId === tire.id) {
+      const dx = e.clientX - tire.x, dy = e.clientY - tire.y;
+      if (Math.hypot(dx, dy) > 5) tire.bouge = true;
+      if (tire.bouge && tire.s) { tire.s.etiquette = { dx: Math.round(tire.dx0 + dx), dy: Math.round(tire.dy0 + dy) }; dessinerMarques(); }
+      return;
+    }
     if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]);
     if (pince && pts.size === 2) { const [a, b] = [...pts.values()]; pince.r = Math.hypot(a[0] - b[0], a[1] - b[1]) / pince.d0; calque.style.transform = "scale(" + pince.r + ")"; calque.style.transformOrigin = "50% 50%"; return; }
     if (dep) { const dx = e.clientX - dep.x, dy = e.clientY - dep.y; if (Math.hypot(dx, dy) > 6) dep.bouge = true; if (dep.bouge) calque.style.transform = "translate(" + dx + "px," + dy + "px)"; }
   });
+  let dernierToucher = null;
   const fin = e => {
+    if (tire && e.pointerId === tire.id) {
+      const q = tire; tire = null;
+      if (q.bouge) { sauver(d); return; }
+      // toucher simple : ouvre le sondage ; double toucher : étiquette remise en position automatique
+      const maint = Date.now();
+      if (dernierToucher && dernierToucher.s === q.s && maint - dernierToucher.t < 400) {
+        dernierToucher = null; if (q.s && q.s.etiquette) { q.s.etiquette = null; sauver(d); dessinerMarques(); toast("Étiquette " + q.s.nom + " : position automatique."); }
+        return;
+      }
+      dernierToucher = { s: q.s, t: maint };
+      setTimeout(() => { if (dernierToucher && dernierToucher.t === maint && q.s) { dernierToucher = null; aller({ v: "sondage", d: d.id, s: q.s.id }); } }, 420);
+      q.el.classList.remove("tire");
+      return;
+    }
     if (!pts.has(e.pointerId)) return; pts.delete(e.pointerId);
     if (pince) { if (!pts.size) { const dz = Math.round(Math.log2(pince.r)); pince = null; if (dz) zoomer(dz); else dessiner(); } return; }
     if (dep && dep.bouge) { v.c = [v.c[0] - (e.clientX - dep.x), v.c[1] - (e.clientY - dep.y)]; dessiner(); }
@@ -1280,11 +1424,12 @@ function vuePlan() {
     h("button", { class: "chip" + (v.fond === k ? " on" : ""), "aria-pressed": v.fond === k ? "true" : "false", onclick: () => { v.fond = k; rendre(); } }, l)));
   setTimeout(() => { if (v.z == null || !v.c) cadrer(); dessiner(); }, 0);
   const legende = h("div", { class: "carte", style: { gap: "6px" } },
-    h("div", { class: "chips" }, ...[...new Set(loc.map(s => s.type))].map(k => h("span", { class: "chip son" }, h("i", { style: { background: TYPES[k][1] } }), k + " · " + TYPES[k][0]))),
+    h("div", { class: "chips" }, ...[...new Set(loc.map(s => s.type))].map(k => { const c = h("span", { class: "chip son" }); c.innerHTML = symboleSondage(k, TYPES[k][1], 18); c.append(k + " · " + TYPES[k][0]); return c; })),
+    loc.some(s => s.etiquette) ? h("button", { class: "mini", style: { alignSelf: "flex-start" }, onclick: () => { loc.forEach(s => { s.etiquette = null; }); sauver(d); dessinerMarques(); rendre(); } }, "Toutes les étiquettes en position automatique") : null,
     sansGps.length ? h("p", { class: "doux", style: { margin: 0 } }, "Sans position : " + sansGps.map(s => s.nom).join(", ") + ". Ouvrez le sondage et relevez le GPS sur place.") : null,
     !loc.length ? h("p", { class: "doux", style: { margin: 0 } }, "Aucun sondage n'a encore de position GPS : le plan s'affiche sur la France.") : null);
   return [fonds, boite, legende, !navigator.onLine ? h("div", { class: "alerte" }, "Hors connexion : le fond de carte s'affichera au retour du réseau.") : null,
-    h("p", { class: "doux", style: { margin: "0 4px", fontSize: "12.5px" } }, "Glissez pour déplacer, pincez ou + / − pour zoomer (jusqu'à une échelle de quelques mètres), ⤢ pour revoir tous les sondages, ◉ pour votre position. Touchez un sondage pour l'ouvrir.")];
+    h("p", { class: "doux", style: { margin: "0 4px", fontSize: "12.5px" } }, "Glissez pour déplacer, pincez ou + / − pour zoomer (jusqu'à une échelle de quelques mètres), ⤢ pour revoir tous les sondages, ◉ pour votre position. Touchez un sondage pour l'ouvrir. Glissez une étiquette pour la décaler : un pointillé la relie à son sondage (double toucher : position automatique). Les étiquettes partent avec l'envoi vers HORUS.")];
 }
 function vueCarte() {
   const d = D(), s = S();
