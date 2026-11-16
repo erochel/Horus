@@ -76,6 +76,10 @@ button.mini{min-height:36px;font-size:14px;padding:0 10px;border-radius:9px}
 .photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
 .photos figure{margin:0;position:relative}
 .photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:9px;display:block;background:var(--champ)}
+.passes{display:flex;flex-direction:column;gap:8px}
+.passe{display:flex;flex-direction:column;gap:5px;padding:8px;border:1px solid var(--ligne);border-radius:10px}
+.passe input.num{width:76px;flex:0 0 auto}
+.passe textarea{min-height:44px}
 .photos figcaption{font-size:11.5px;color:var(--doux);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .barre{position:fixed;left:0;right:0;bottom:0;z-index:6;background:color-mix(in srgb,var(--carte) 92%,transparent);backdrop-filter:blur(10px);
   border-top:1px solid var(--ligne);padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
@@ -199,7 +203,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.19";
+const VERSION_APP = "1.20";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -591,7 +595,7 @@ function vueSondage() {
     h("div", { class: "carte" }, ...passes(s, "outils", "Outil", "Tricône Ø63"), ...passes(s, "tubages", "Tubage", "LS Ø95")),
     h("h2", {}, "Photos"),
     h("div", { class: "carte" }, s.photos.length ? h("div", { class: "photos" }, ...s.photos.map((p, i) => h("figure", { onclick: () => editerPhoto(s, i, photoProf) },
-      h("img", { src: p.data, alt: p.legende || "Photo " + (i + 1) }), h("figcaption", {}, photoProf && p.de != null ? fr(p.de, 2) + " – " + fr(p.a, 2) + " m" : (p.legende || "Photo " + (i + 1)))))) : h("div", { class: "vide" }, "Aucune photo."),
+      h("img", { src: p.data, alt: p.legende || "Photo " + (i + 1) }), h("figcaption", { title: p.legende || "" }, photoProf && p.de != null ? fr(p.de, 2) + " – " + fr(p.a, 2) + " m" + (s.type === "SC" && p.passes && p.passes.length ? " · " + p.passes.length + " passe" + (p.passes.length > 1 ? "s" : "") : "") : (p.legende || "Photo " + (i + 1)))))) : h("div", { class: "vide" }, "Aucune photo."),
       h("button", { class: "mini", onclick: () => prendrePhoto(s, true) }, "Ajouter depuis la photothèque")),
   ];
   if (s.type === "EP") out.splice(2, 0, h("h2", {}, "Essai Porchet"), cartePorchet(s));
@@ -750,6 +754,7 @@ function prendrePhoto(s, galerie) {
         const im = await reduire(f);
         const p = { id: uid("ph"), nom: f.name || "photo.jpg", data: im.data, l: im.l, h: im.h, legende: "", quand: new Date().toISOString() };
         if (photoProf) { p.de = z; p.a = null; }
+        if (s.type === "SC") p.passes = [];
         s.photos.push(p);
       } catch (e) { toast("Photo illisible."); }
     }
@@ -758,11 +763,53 @@ function prendrePhoto(s, galerie) {
   };
   document.body.append(inp); inp.click();
 }
+/* Caisses de carottes (SC) : comme dans HORUS sur le PC, le « De » d'une caisse suit le « à » de la précédente
+   (sauf saisie manuelle : de_fixe) et la description se fait par passes {de, a, description} dans la caisse. */
+function chainerCarottes(s) {
+  let prec = null;
+  for (const p of s.photos || []) {
+    if (prec && !p.de_fixe && prec.a != null) p.de = +prec.a;
+    if (!p.passes) p.passes = p.legende && s.type === "SC" ? [{ de: p.de ?? null, a: p.a ?? null, description: p.legende }] : [];
+    prec = p;
+  }
+}
+function passesCarotte(p) {
+  const bloc = h("div", { class: "passes" });
+  const resume = () => { p.legende = p.passes.map(x => x.description).filter(Boolean).join(" / "); sauver(); };
+  const nb = (q, cle, apres) => { const i = h("input", { type: "text", inputmode: "decimal", class: "num", placeholder: "m", value: q[cle] == null ? "" : fr(q[cle], 2) });
+    i.addEventListener("change", () => { q[cle] = num(i.value); i.value = q[cle] == null ? "" : fr(q[cle], 2); sauver(); apres && apres(); }); return i; };
+  const dessiner = () => {
+    bloc.innerHTML = "";
+    bloc.append(h("b", { style: { fontSize: "14px" } }, "Description lithologique"));
+    p.passes.forEach((q, k) => {
+      const ta = h("textarea", { rows: 2, placeholder: "ex. sable fin marron clair, humide", oninput: () => { q.description = ta.value; resume(); } });
+      ta.value = q.description || "";
+      bloc.append(h("div", { class: "passe" },
+        h("div", { class: "ligne", style: { gap: "6px", flexWrap: "nowrap", alignItems: "center" } },
+          h("span", { class: "doux" }, "De"), nb(q, "de"), h("span", { class: "doux" }, "à"),
+          nb(q, "a", () => { const sv = p.passes[k + 1]; if (sv && q.a != null) { sv.de = q.a; dessiner(); } }), h("span", { class: "doux" }, "m"),
+          h("span", { class: "esp" }),
+          h("button", { class: "mini dang", "aria-label": "Retirer cette passe", onclick: () => { p.passes.splice(k, 1); resume(); dessiner(); } }, "×")),
+        ta));
+    });
+    bloc.append(h("button", { onclick: () => {
+      const der = p.passes[p.passes.length - 1], de = der ? der.a : p.de;
+      p.passes.push({ de: de == null ? null : +de, a: p.a == null || (de != null && +p.a <= +de) ? null : +p.a, description: "" });
+      sauver(); dessiner(); const z = bloc.querySelectorAll("textarea"); if (z.length) z[z.length - 1].focus();
+    } }, p.passes.length ? "+ Passe" : "+ Décrire cette caisse"));
+  };
+  dessiner();
+  return bloc;
+}
 function editerPhoto(s, i, avecProf) {
-  const p = s.photos[i];
+  const p = s.photos[i], carotte = s.type === "SC";
+  if (carotte) chainerCarottes(s);
+  const cDe = avecProf ? champ(carotte ? "Caisse de (m)" : "De (m)", p, "de", { type: "num", apres: () => { p.de_fixe = carotte && i > 0 && p.de != null; if (carotte && p.de == null) chainerCarottes(s); } }) : null;
+  if (cDe && carotte && i > 0 && !p.de_fixe) cDe.append(h("small", { class: "doux", style: { fontWeight: 400 } }, "suit la caisse précédente"));
   feuille("Photo " + (i + 1), [h("img", { src: p.data, alt: "", style: { borderRadius: "12px", maxHeight: "50vh", objectFit: "contain", background: "#000" } }),
-    avecProf ? h("div", { class: "g2" }, champ(s.type === "SC" ? "Caisse de (m)" : "De (m)", p, "de", { type: "num" }), champ("À (m)", p, "a", { type: "num" })) : null,
-    champ("Légende", p, "legende", { ph: "ex. fouille côté façade nord" }),
+    avecProf ? h("div", { class: "g2" }, cDe, champ("À (m)", p, "a", { type: "num", apres: () => {
+      if (carotte) { const der = p.passes[p.passes.length - 1]; if (der && der.a == null) der.a = p.a; chainerCarottes(s); } } })) : null,
+    carotte ? passesCarotte(p) : champ("Légende", p, "legende", { ph: "ex. fouille côté façade nord" }),
     h("button", { class: "dang", onclick: () => { s.photos.splice(i, 1); sauver(); document.querySelector(".feuille").remove(); rendre(); } }, "Supprimer la photo")],
   f => [h("button", { class: "prim", onclick: () => { sauver(); f(); rendre(); } }, "OK")]);
 }
