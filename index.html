@@ -80,6 +80,7 @@ button.mini{min-height:36px;font-size:14px;padding:0 10px;border-radius:9px}
 .passe{display:flex;flex-direction:column;gap:5px;padding:8px;border:1px solid var(--ligne);border-radius:10px}
 .passe input.num{width:76px;flex:0 0 auto}
 .passe textarea{min-height:44px}
+.guide-litho{display:flex;flex-direction:column;gap:12px;padding:10px;border-radius:10px;background:var(--fond, #F4F6F9)}
 .passe button.symb{min-width:44px;font-size:17px;font-weight:700;color:var(--nuit, #223558)}
 .photos figcaption{font-size:11.5px;color:var(--doux);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .barre{position:fixed;left:0;right:0;bottom:0;z-index:6;background:color-mix(in srgb,var(--carte) 92%,transparent);backdrop-filter:blur(10px);
@@ -158,6 +159,28 @@ button.mini{min-height:36px;font-size:14px;padding:0 10px;border-radius:9px}
 .porchet-l input:not([type=checkbox]){min-height:40px;text-align:right}
 .porchet-l input[type=checkbox]{width:24px;height:24px;justify-self:center}
 .porchet-l b{text-align:right;font-size:14px}.porchet-l b.rouge{color:#C62828}
+.rep-son.sym.prevu{opacity:.5;filter:grayscale(.3) drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+.implant{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-radius:9px;background:#FFF4E5;border:1px solid #F5C27A;font-size:13.5px}
+.implant.ok{background:#EEF6E2;border-color:#A0C555}
+.guide{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.guide-nom{display:flex;align-items:center;gap:8px;font-size:20px}
+.guide-rose{position:relative;width:210px;height:210px;border-radius:50%;border:2px solid var(--ligne);background:radial-gradient(circle,var(--carte) 60%,var(--champ) 100%);margin:6px 0}
+.guide-nord{position:absolute;inset:0;transition:transform .25s}
+.guide-nord span{position:absolute;left:50%;top:6px;transform:translateX(-50%);font-weight:800;color:#C62828}
+.guide-fleche{position:absolute;inset:18px;transition:transform .25s}
+.guide-fleche svg{width:100%;height:100%;fill:var(--nuit, #223558)}
+.guide-fleche.ok svg{fill:#7FA331}
+.guide-dist{font:800 46px/1 var(--corps);color:var(--texte)}
+.guide-dist.ok{color:#7FA331}
+.guide-dir{font-size:17px;font-weight:600}
+.liste .it.on{background:var(--champ)}
+.porchet-l.attendue{outline:2px solid var(--vert, #A0C555);outline-offset:3px;border-radius:8px}
+.chrono{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0 10px;border-bottom:1px solid var(--ligne)}
+.chrono-temps{font:800 44px/1 ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:1px;color:var(--texte)}
+.chrono-info{font-size:14px;text-align:center}
+.carte.chrono-alerte .chrono-temps{color:#C62828;animation:clignote 1s steps(2) infinite}
+.carte.chrono-alerte .chrono-info{color:#C62828;font-weight:700}
+@keyframes clignote{50%{opacity:.35}}
 .porchet-l.ret{background:#EEF6E2;border-radius:10px;padding:2px 4px;margin:0 -4px}
 .porchet-tete{font-size:12px;color:var(--doux);font-weight:600}.porchet-tete span:nth-child(n+3){text-align:right}
 .porchet-res{display:flex;flex-wrap:wrap;gap:6px 22px;align-items:baseline;padding:10px 12px;border:1px solid #CFE5AD;background:#F5FAEE;border-radius:12px}
@@ -204,7 +227,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.21";
+const VERSION_APP = "1.22";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -215,7 +238,7 @@ const TYPES = {
 const MATERIAUX = [
   ["terre_vegetale", "Terre végétale", "f", "autre", "#6B4F2A"], ["remblai", "Remblai", "m", "autre", "#9E9E9E"],
   ["argile", "Argile", "f", "fin", "#B98A5A"], ["limon", "Limon", "m", "fin", "#D8B98A"], ["sable", "Sable", "m", "grenu", "#E8D49B"],
-  ["grave", "Grave", "f", "grenu", "#BFA77A"], ["marne", "Marne", "f", "fin", "#B7B79A"], ["tourbe", "Tourbe", "f", "fin", "#3E3A2E"],
+  ["grave", "Grave", "f", "grenu", "#BFA77A"], ["marne", "Marne", "f", "fin", "#B7B79A"], ["vase", "Vase", "f", "fin", "#5E6B57"], ["tourbe", "Tourbe", "f", "fin", "#3E3A2E"],
   ["calcaire", "Calcaire", "m", "roche", "#D9D3C0"], ["gres", "Grès", "m", "roche", "#D2B48C"], ["flysch", "Flysch", "m", "roche", "#8E8B7E"],
   ["roche_alteree", "Roche altérée", "f", "roche", "#A39D8F"], ["enrobe", "Enrobé", "m", "autre", "#4A4A4A"], ["beton", "Béton", "m", "autre", "#E8838C"],
 ];
@@ -230,9 +253,26 @@ const ETATS = {
   autre: [],
 };
 const HUMIDITES = [["sec", "sèche"], ["humide", "humide"], ["très humide", "très humide"], ["saturé", "saturée"]];
+const GRANULOS = [["fin", "fine"], ["moyen", "moyenne"], ["grossier", "grossière"]];        // sables et graves
+const NUANCES = [["clair", "clair"], ["foncé", "foncé"]];                                    // « gris clair » : couleur composée invariable
+const ELEMENTS = [["à passées sableuses"], ["à passées argileuses"], ["à passées graveleuses"], ["avec débris de briques"], ["avec débris de béton"],
+  ["avec racines"], ["avec coquilles"], ["avec matière organique"], ["avec oxydations"], ["avec cailloutis"]];
 
 // ------------------------------------------------------------ outils
 const $ = s => document.querySelector(s);
+/* distance (m) et cap (degrés depuis le nord, sens horaire) entre deux points WGS84 */
+const RAD = Math.PI / 180;
+function distM(la1, lo1, la2, lo2) {
+  const a = Math.sin((la2 - la1) * RAD / 2) ** 2 + Math.cos(la1 * RAD) * Math.cos(la2 * RAD) * Math.sin((lo2 - lo1) * RAD / 2) ** 2;
+  return 2 * 6371008.8 * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+function capDeg(la1, lo1, la2, lo2) {
+  const y = Math.sin((lo2 - lo1) * RAD) * Math.cos(la2 * RAD), x = Math.cos(la1 * RAD) * Math.sin(la2 * RAD) - Math.sin(la1 * RAD) * Math.cos(la2 * RAD) * Math.cos((lo2 - lo1) * RAD);
+  return (Math.atan2(y, x) / RAD + 360) % 360;
+}
+const DIRECTIONS = ["au nord", "au nord-est", "à l'est", "au sud-est", "au sud", "au sud-ouest", "à l'ouest", "au nord-ouest"];
+const direction = cap => DIRECTIONS[Math.round(cap / 45) % 8];
+const aRealiser = s => !!(s.implantation && !s.realise);      // implanté, pas encore réalisé
 function h(tag, a, ...k) {
   const e = document.createElement(tag);
   for (const [n, v] of Object.entries(a || {})) {
@@ -317,6 +357,8 @@ function rendre() {
   else if (v === "tournee") m.append(...vueTournee());
   else if (v === "carte") m.append(...vueCarte().filter(Boolean));
   else if (v === "plan") m.append(...vuePlan().filter(Boolean));
+  else if (v === "guidage") m.append(...vueGuidage().filter(Boolean));
+  if (v !== "guidage") arreterGuidage();
 }
 $("#b-retour").onclick = retour;
 
@@ -351,7 +393,7 @@ function confirmer(texte, oui, libelle = "Supprimer") {
 function vueAccueil() {
   if (ONGLET === "tech") return vueTech();
   entete("HORUS Terrain", "Sondages · GINGER CEBTP");
-  barre(h("button", { class: "prim", onclick: nouveauDossier }, "+ Nouveau dossier"), h("button", { onclick: recevoirPlan, title: "Plan préparé dans HORUS sur l'ordinateur (Implantation › Envoyer le plan au téléphone)" }, "Recevoir un plan HORUS"));
+  barre(h("button", { class: "prim", onclick: nouveauDossier }, "+ Nouveau dossier"), h("button", { onclick: recevoirPlan, title: "Plan préparé dans HORUS (Implantation › Envoyer le plan au téléphone) ou implantation provisoire de RÂ" }, "Recevoir un plan / implantation"));
   const out = [ongletsAccueil()];
   if (!STORE.ok) out.push(h("div", { class: "alerte" }, "Le stockage de cet appareil est indisponible : vos saisies seront perdues à la fermeture. Exportez avant de quitter."));
   const tri = DOSSIERS.slice().sort((a, b) => (b.maj || "").localeCompare(a.maj || ""));
@@ -395,8 +437,11 @@ function vueDossier() {
     h("button", { class: "plein", onclick: () => aller({ v: "plan", d: d.id }) }, "Plan des sondages", h("small", { style: { display: "block", fontWeight: 400, opacity: .75 } }, nLoc + " / " + d.sondages.length + " placé(s) · photo aérienne")),
     h("button", { class: "plein", onclick: () => aller({ v: "carte", d: d.id }) }, "Cartes du site", h("small", { style: { display: "block", fontWeight: 400, opacity: .75 } }, "géologie, aléas, parcellaire")));
   const ordre = d.sondages.slice();
+  const nPrevus = d.sondages.filter(aRealiser).length, nImpl = d.sondages.filter(s => s.implantation).length;
   return [
     cartes,
+    nImpl ? h("button", { class: "plein" + (nPrevus ? " prim" : ""), onclick: () => aller({ v: "guidage", d: d.id }) }, nPrevus ? "Guidage vers les sondages prévus" : "Implantation : tous les sondages sont réalisés",
+      h("small", { style: { display: "block", fontWeight: 400, opacity: .8 } }, (nImpl - nPrevus) + " réalisé(s) sur " + nImpl + " implanté(s)")) : null,
     h("h2", {}, "Sondages"),
     h("div", { class: "carte" }, ordre.length ? h("div", { class: "liste" }, ...ordre.map(s => h("div", { class: "it", onclick: () => aller({ v: "sondage", d: d.id, s: s.id }) },
       h("span", { class: "badge", style: { background: TYPES[s.type][1] } }, s.type),
@@ -430,7 +475,7 @@ function resume(s) {
   if (s.prof != null) p.push(fr(s.prof, 2) + " m");
   if (s.lithologie.length) p.push(s.lithologie.length + " couche(s)");
   if (s.photos.length) p.push(s.photos.length + " photo(s)");
-  if (s.lat != null) p.push("GPS");
+  if (aRealiser(s)) p.push("à réaliser"); else if (s.realise) p.push("réalisé (écart " + fr(s.realise.ecart, 1) + " m)"); else if (s.lat != null) p.push("GPS");
   if (s.piezo && s.piezo.releves.length) p.push(s.piezo.releves.length + " relevé(s) piézo");
   return p.join(" · ") || TYPES[s.type][0];
 }
@@ -444,7 +489,9 @@ function recevoirPlan() {
   inp.onchange = async () => {
     const f = inp.files[0]; inp.remove(); if (!f) return;
     let j = null; try { j = JSON.parse(await f.text()); } catch (e) { /* illisible */ }
-    if (!j || j.format !== "HORUS-plan") return toast(j && j.format === "HORUS-terrain" ? "Ce fichier est un envoi du téléphone vers HORUS, pas un plan préparé dans HORUS." : "Fichier non reconnu : choisissez le plan envoyé par HORUS (HORUS_plan_….txt).", 5000);
+    // plan préparé dans HORUS (HORUS-plan) ou implantation provisoire de RÂ / d'un autre téléphone (HORUS-terrain)
+    if (!j || !["HORUS-plan", "HORUS-terrain"].includes(j.format)) return toast("Fichier non reconnu : choisissez le plan envoyé par HORUS (HORUS_plan_….txt) ou l'implantation RÂ (HORUS_implantation_….json).", 5000);
+    const source = j.format === "HORUS-plan" ? "HORUS" : (/R[ÂA]/i.test(JSON.stringify(j.app || j.emetteur || "") + (j.sondages || []).map(x => x.commentaire || "").join(" ")) ? "RÂ" : "fichier");
     const dj = j.dossier || {}, norm = x => String(x || "").toUpperCase().replace(/[\s._\-]+/g, "");
     let d = dj.numero ? DOSSIERS.find(x => norm(x.numero) === norm(dj.numero)) : null;
     const nouveau = !d;
@@ -455,14 +502,20 @@ function recevoirPlan() {
       const nom = String(t.nom || "").trim(); if (!nom) return;
       let s = d.sondages.find(x => x.nom.toLowerCase() === nom.toLowerCase());
       if (!s) { s = sondageVide(d, nom, TYPES[t.type] ? t.type : "SP"); d.sondages.push(s); crees++; }
-      if (t.lat != null && t.lon != null && isFinite(t.lat) && isFinite(t.lon)) { if (s.lat !== +t.lat || s.lon !== +t.lon) places++; s.lat = +t.lat; s.lon = +t.lon; s.prec = null; }
+      if (t.lat != null && t.lon != null && isFinite(t.lat) && isFinite(t.lon)) {
+        // position du plan = implantation prévue ; elle ne remplace pas une position déjà relevée sur place (sondage réalisé)
+        s.implantation = { lat: +t.lat, lon: +t.lon, source, recu: aujourdhui() };
+        if (!s.realise) { if (s.lat !== +t.lat || s.lon !== +t.lon) places++; s.lat = +t.lat; s.lon = +t.lon; s.prec = null; }
+        else s.realise.ecart = Math.round(distM(s.lat, s.lon, +t.lat, +t.lon) * 10) / 10;
+      }
+      if (j.format === "HORUS-terrain" && t.prof != null && s.prof_prevue == null) s.prof_prevue = +t.prof;
       if (s.z == null && t.z != null) { s.z = +t.z; s.z_origine = t.z_origine || null; }
-      if (s.prof == null && t.prof != null) s.prof = +t.prof;
+      if (j.format === "HORUS-plan" && s.prof == null && t.prof != null) s.prof = +t.prof;
       if (t.etiquette && isFinite(t.etiquette.dx) && isFinite(t.etiquette.dy)) s.etiquette = { dx: +t.etiquette.dx, dy: +t.etiquette.dy };
     });
     d.maj = new Date().toISOString();
     await ecrire(d);
-    toast((nouveau ? "Dossier créé" : "Dossier mis à jour") + " : " + crees + " sondage(s) créé(s), " + places + " position(s) reprise(s) de HORUS.", 5000);
+    toast((nouveau ? "Dossier créé" : "Dossier mis à jour") + " : " + crees + " sondage(s) créé(s), " + places + " implantation(s) reprise(s) (" + source + "). Guidage disponible depuis le dossier.", 5500);
     PILE = [{ v: "accueil" }, { v: "dossier", d: d.id }]; aller({ v: "plan", d: d.id });
   };
   document.body.append(inp); inp.click();
@@ -506,6 +559,72 @@ function kTxt(k) {
   const e = Math.floor(Math.log10(k)), sup = "⁻⁰¹²³⁴⁵⁶⁷⁸⁹";
   return (k / 10 ** e).toFixed(2).replace(".", ",") + "·10" + String(e).replace(/[-0-9]/g, c => sup["-0123456789".indexOf(c)]);
 }
+/* ---- chrono Porchet (Terrain 1.22) : départ enregistré dans l'essai (p.chrono = {debut, fin, alertes, pre}),
+   donc il survit à un changement d'écran ou à une relance de l'appli. À chaque temps de lecture : vibration courte
+   10 s avant, puis bips + vibration longue + case de la lecture mise en avant ; notification si l'appli est en
+   arrière-plan. L'écran reste allumé pendant l'essai (Wake Lock). */
+let AUDIO = null, VEILLE = null;
+function bip(n = 3) {
+  try {
+    AUDIO = AUDIO || new (window.AudioContext || window.webkitAudioContext)();
+    for (let k = 0; k < n; k++) {
+      const o = AUDIO.createOscillator(), g = AUDIO.createGain(), t0 = AUDIO.currentTime + k * 0.32;
+      o.frequency.value = 1320; o.type = "square"; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.35, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22); o.connect(g).connect(AUDIO.destination); o.start(t0); o.stop(t0 + 0.25);
+    }
+  } catch (e) { /* pas de son */ }
+}
+async function garderEcran(on) {
+  try {
+    if (on && "wakeLock" in navigator && !VEILLE) { VEILLE = await navigator.wakeLock.request("screen"); VEILLE.addEventListener("release", () => { VEILLE = null; }); }
+    if (!on && VEILLE) { await VEILLE.release(); VEILLE = null; }
+  } catch (e) { /* refusé : l'écran peut s'éteindre */ }
+}
+const chronosEnCours = () => DOSSIERS.flatMap(d => (d.sondages || []).filter(s => s.porchet && s.porchet.chrono && s.porchet.chrono.debut && !s.porchet.chrono.fin
+  && Date.now() - s.porchet.chrono.debut < 4 * 3600e3).map(s => ({ d, s })));
+const mmss = sec => { sec = Math.max(0, Math.floor(sec)); const h_ = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, x = sec % 60;
+  return (h_ ? h_ + ":" + String(m).padStart(2, "0") : String(m)) + ":" + String(x).padStart(2, "0"); };
+function prochaineLecture(p, ecoule) {
+  return p.mesures.map((m, i) => ({ m, i })).filter(x => x.m.t != null && x.m.h == null && x.m.t * 60 >= ecoule - 45).sort((a, b) => a.m.t - b.m.t)[0] || null;
+}
+function tickChrono() {
+  const L = chronosEnCours();
+  if (L.length) garderEcran(true);
+  for (const { d, s } of L) {
+    const p = s.porchet, c = p.chrono, ec = (Date.now() - c.debut) / 1000;
+    c.alertes = c.alertes || []; c.pre = c.pre || [];
+    for (const m of p.mesures) {
+      if (m.t == null || m.h != null) continue;
+      const tt = m.t * 60;
+      if (ec >= tt - 10 && ec < tt && !c.pre.includes(m.t)) { c.pre.push(m.t); try { navigator.vibrate && navigator.vibrate(120); } catch (e) {} }
+      if (ec >= tt && ec - tt < 45 && !c.alertes.includes(m.t)) {
+        c.alertes.push(m.t); sauver(d);
+        bip(3); try { navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 400]); } catch (e) {}
+        const lib = "Porchet " + s.nom + " : lecture à " + fr(m.t, m.t % 1 ? 1 : 0) + " min";
+        if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+          try { navigator.serviceWorker && navigator.serviceWorker.getRegistration().then(r => r ? r.showNotification(lib, { tag: "porchet", renotify: true, vibrate: [400, 150, 400] }) : new Notification(lib)); } catch (e) { /* ignoré */ }
+        } else toast(lib, 4000);
+        const carte = document.querySelector('[data-chrono-carte="' + s.id + '"]');
+        const inp = carte && carte.querySelector('.porchet-l[data-i="' + p.mesures.indexOf(m) + '"] input[data-h]');
+        if (inp) { inp.scrollIntoView({ block: "center", behavior: "smooth" }); setTimeout(() => inp.focus(), 350); }
+      }
+    }
+  }
+  if (!L.length) garderEcran(false);
+  document.querySelectorAll("[data-chrono-carte]").forEach(carte => {
+    const s = DOSSIERS.flatMap(d => d.sondages || []).find(x => x.id === carte.dataset.chronoCarte);
+    if (!s || !s.porchet) return;
+    const p = s.porchet, c = p.chrono || {}, aff_ = carte.querySelector(".chrono-temps"), info = carte.querySelector(".chrono-info");
+    if (!aff_) return;
+    const ec = c.debut ? ((c.fin || Date.now()) - c.debut) / 1000 : 0;
+    aff_.textContent = mmss(ec);
+    const pr = c.debut && !c.fin ? prochaineLecture(p, ec) : null;
+    info.textContent = !c.debut ? "Démarrez au remplissage du trou." : c.fin ? "Essai arrêté." :
+      pr ? (pr.m.t * 60 <= ec ? "Lecture à " + fr(pr.m.t, pr.m.t % 1 ? 1 : 0) + " min : notez H maintenant" : "Prochaine lecture : " + fr(pr.m.t, pr.m.t % 1 ? 1 : 0) + " min, dans " + mmss(pr.m.t * 60 - ec)) : "Toutes les lectures sont faites.";
+    carte.classList.toggle("chrono-alerte", !!(pr && pr.m.t * 60 <= ec));
+    carte.querySelectorAll(".porchet-l[data-i]").forEach(l => l.classList.toggle("attendue", !!(pr && +l.dataset.i === pr.i)));
+  });
+}
 function cartePorchet(s) {
   if (!s.porchet) s.porchet = porchetVide();
   const p = s.porchet;
@@ -517,11 +636,12 @@ function cartePorchet(s) {
     zone.append(h("div", { class: "porchet-l porchet-tete" }, h("span", {}, "Temps (min)"), h("span", {}, "H / repère (cm)"), h("span", {}, "K (m/s)"), h("span", {}, "Moy.")));
     lignes = p.mesures.map(m => {
       const iT = h("input", { inputmode: "decimal", enterkeyhint: "next", value: aff(m.t), onchange: () => { m.t = num(iT.value); iT.value = aff(m.t); sauver(); calc(); } });
-      const iH = h("input", { inputmode: "decimal", enterkeyhint: "next", value: aff(m.h), placeholder: "cm", oninput: () => { m.h = num(iH.value); calc(); }, onchange: () => { iH.value = aff(m.h); sauver(); } });
+      const iH = h("input", { inputmode: "decimal", enterkeyhint: "next", "data-h": "1", value: aff(m.h), placeholder: "cm", oninput: () => { m.h = num(iH.value); calc(); },
+        onchange: () => { iH.value = aff(m.h); const c = p.chrono; if (m.h != null && c && c.debut && !c.fin && m.t_lu == null) m.t_lu = Math.round((Date.now() - c.debut) / 600) / 100; sauver(); tickChrono(); } });
       const k = h("b"), cb = h("input", { type: "checkbox", "aria-label": "Compter dans K moyen", onchange: () => {
         const r = calculPorchet(p); if (r.auto) r.L.forEach(x => { x.m.ret = x.ret; });
         m.ret = cb.checked; sauver(); calc(); } });
-      const ligne = h("div", { class: "porchet-l" }, iT, iH, k, cb);
+      const ligne = h("div", { class: "porchet-l", "data-i": String(p.mesures.indexOf(m)) }, iT, iH, k, cb);
       zone.append(ligne);
       return { m, ligne, k, cb };
     });
@@ -545,10 +665,27 @@ function cartePorchet(s) {
       h("p", { class: "doux", style: { margin: 0, flexBasis: "100%", fontSize: "13px" } }, (r.auto ? "4 dernières lectures" : "Lectures cochées") + " : " + r.ret.map(l => fr(l.t, l.t % 1 ? 1 : 0)).join(" ; ") + " min"));
   };
   construire();
-  return h("div", { class: "carte" },
+  const zChrono = h("div", { class: "chrono" });
+  const dessinerChrono = () => {
+    const c = p.chrono || {};
+    zChrono.innerHTML = "";
+    zChrono.append(h("div", { class: "chrono-temps" }, "0:00"), h("div", { class: "chrono-info doux" }),
+      h("div", { class: "ligne", style: { gap: "6px", justifyContent: "center" } },
+        !c.debut ? h("button", { class: "prim", onclick: async () => {
+          bip(1);                                         // débloque le son (geste de l'utilisateur)
+          p.chrono = { debut: Date.now(), fin: null, alertes: [], pre: [] }; if (!p.date) p.date = aujourdhui();
+          try { if ("Notification" in window && Notification.permission === "default") await Notification.requestPermission(); } catch (e) { /* facultatif */ }
+          sauver(); garderEcran(true); dessinerChrono(); tickChrono(); } }, "▶ Démarrer l'essai") : null,
+        c.debut && !c.fin ? h("button", { onclick: () => confirmer("Arrêter le chrono de l'essai ?", () => { p.chrono.fin = Date.now(); sauver(); garderEcran(false); dessinerChrono(); tickChrono(); }, "Arrêter") }, "■ Arrêter") : null,
+        c.debut ? h("button", { class: "mini", onclick: () => confirmer("Remettre le chrono à zéro ? (les lectures saisies sont gardées)", () => { p.chrono = null; sauver(); dessinerChrono(); tickChrono(); }, "Remettre à zéro") }, "Remettre à zéro") : null));
+    tickChrono();
+  };
+  dessinerChrono();
+  return h("div", { class: "carte", "data-chrono-carte": s.id },
+    zChrono,
     h("div", { class: "g2" }, champ("Profondeur du trou (m)", p, "prof_trou", { type: "num", apres: () => { if (s.prof == null) s.prof = p.prof_trou; } }), champ("Diamètre du trou (m)", p, "diametre", { type: "num", ph: "0,06", apres: calc })),
     h("div", { class: "g2" }, champ("Hauteur d'eau initiale Hw (m)", p, "hw", { type: "num", apres: calc }), champ("Date de l'essai", p, "date", { type: "date" })),
-    h("p", { class: "doux", style: { margin: 0, fontSize: "13px" } }, "Lancez le chrono au remplissage, puis notez à chaque temps la baisse H lue sous le repère (niveau initial). Les temps se modifient librement."),
+    h("p", { class: "doux", style: { margin: 0, fontSize: "13px" } }, "« Démarrer l'essai » au remplissage : le téléphone vibre 10 s avant chaque temps, puis sonne et ouvre la case de la lecture. Notez la baisse H lue sous le repère (niveau initial). Les temps se modifient librement."),
     zone, outils, res);
 }
 const piezoVide = () => ({ hauteur_tete: null, prof_tube: null, crepine_de: null, crepine_a: null, ref: "tete", releves: [] });
@@ -572,7 +709,11 @@ function vueSondage() {
       h("div", { class: "g2" }, champ("Nom", s, "nom", { caps: "characters", apres: () => entete(s.nom, TYPES[s.type][0]) }), champ("Type", s, "type", { type: "select", options: Object.entries(TYPES).map(([k, v]) => [k, k + " - " + v[0]]), apres: () => { if (s.type === "PZ" && !s.piezo) s.piezo = piezoVide(); if (s.type === "RF" && !s.rf) s.rf = rfDefaut(); rendre(); } })),
       h("div", { class: "g2" }, champ("Date", s, "date", { type: "date" }), champ("Profondeur atteinte (m)", s, "prof", { type: "num", apres: () => { if (s.prof == null) { s.prof_auto = null; suivreProfLitho(s); rendre(); } else { const b = s.lithologie.map(c => +c.a).filter(isFinite); s.prof_auto = b.length && s.prof === Math.max(...b) ? s.prof : null; } } })),
       h("div", { class: "g2" }, champ("Opérateur", s, "operateur"), champ("Machine", s, "machine")),
-      h("div", { class: "ligne" }, zoneGps, h("span", { class: "esp" }), h("button", { class: "mini", onclick: () => releverGps(s, majGps) }, s.lat == null ? "Relever la position" : "Relever à nouveau")),
+      h("div", { class: "ligne" }, zoneGps, h("span", { class: "esp" }), h("button", { class: "mini", onclick: () => releverGps(s, () => { majGps(); rendre(); }) }, s.lat == null || aRealiser(s) ? "Relever la position" : "Relever à nouveau")),
+      s.implantation ? h("div", { class: "implant" + (s.realise ? " ok" : "") },
+        h("span", {}, s.realise ? "Réalisé le " + dateFr(s.realise.date) + " · écart avec l'implantation " + fr(s.realise.ecart, 1) + " m" + (s.realise.ecart > 2 ? " ⚠" : "")
+          : "Implantation prévue (" + s.implantation.source + ")" + (s.prof_prevue != null ? " · profondeur prévue " + fr(s.prof_prevue, 1) + " m" : "") + " : relever la position une fois sur place"),
+        aRealiser(s) ? h("button", { class: "mini prim", onclick: () => aller({ v: "guidage", d: d.id, s: s.id }) }, "Guider jusqu'ici") : null) : null,
       h("button", { class: "mini", onclick: () => aller({ v: "carte", d: d.id, s: s.id }) }, "Cartes au sondage : géologie, sismique, argiles, nappe, inondation, parcelle"),
       s.contexte ? h("div", { class: "doux", style: { fontSize: "13px" } }, ...Object.values(s.contexte).map(c => h("div", {}, "• " + c.texte))) : null,
       h("div", { class: "ligne", style: { alignItems: "flex-end", gap: "8px", flexWrap: "nowrap" } },
@@ -642,16 +783,28 @@ async function zIgn(s, maj, auto) {
     toast((auto ? "Position et altitude relevées : " : "Altitude IGN : ") + "Z = " + fr(z, 2) + " m NGF (terrain naturel, MNT RGE ALTI ; à vérifier si le terrain a été remanié).", 5000);
   } catch (e) { if (!auto) toast(navigator.onLine ? "Service d'altitude IGN injoignable pour le moment." : "Hors connexion : altitude IGN indisponible."); }
 }
-function releverGps(s, maj) {
+function releverGps(s, maj, posConnue) {
+  if (posConnue) return appliquerPosition(s, posConnue, maj);
   if (!navigator.geolocation) return toast("Position indisponible sur cet appareil.");
   toast("Recherche de la position…", 2000);
-  navigator.geolocation.getCurrentPosition(p => {
-    s.lat = +p.coords.latitude.toFixed(7); s.lon = +p.coords.longitude.toFixed(7); s.prec = p.coords.accuracy;
+  navigator.geolocation.getCurrentPosition(p => appliquerPosition(s, p.coords, maj),
+    e => toast(e.code === 1 ? "Accès à la position refusé : autorisez-le dans Réglages > Confidentialité > Service de localisation." : "Position indisponible ici (" + e.message + ")."),
+  { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+}
+function appliquerPosition(s, co, maj) {
+  {
+    const p = { coords: co };
+    s.lat = +co.latitude.toFixed(7); s.lon = +co.longitude.toFixed(7); s.prec = co.accuracy;
+    let ecartTxt = "";
+    if (s.implantation) {                              // sondage implanté à l'avance : il devient réalisé, écart noté
+      const e = distM(s.implantation.lat, s.implantation.lon, s.lat, s.lon);
+      s.realise = { date: aujourdhui(), heure: maintenant(), ecart: Math.round(e * 10) / 10, prec: Math.round(p.coords.accuracy) };
+      ecartTxt = " Écart avec l'implantation : " + fr(e, 1) + " m.";
+    }
     sauver(); maj();
     if (s.z == null && navigator.onLine) zIgn(s, maj, true);           // altitude du terrain proposée automatiquement (IGN)
-    toast(p.coords.accuracy > 15 ? "Position relevée à ± " + Math.round(p.coords.accuracy) + " m : relevez à nouveau à découvert si possible." : "Position relevée.");
-  }, e => toast(e.code === 1 ? "Accès à la position refusé : autorisez-le dans Réglages > Confidentialité > Service de localisation." : "Position indisponible ici (" + e.message + ")."),
-  { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+    toast((p.coords.accuracy > 15 ? "Position relevée à ± " + Math.round(p.coords.accuracy) + " m : relevez à nouveau à découvert si possible." : "Position relevée.") + ecartTxt, ecartTxt ? 5000 : 2600);
+  }
 }
 
 // ------------------------------------------------------------ couche de lithologie (description guidée NF EN ISO 14688-1)
@@ -660,12 +813,17 @@ function phrase(o) {
   if (!m) return "";
   const f = m.g === "f", acc = p => f ? p[1] : p[0];
   let t = m.lib;
-  const sec = o.sec.map(k => SECONDAIRES.find(x => x[0] === k)).filter(Boolean);
+  const gr = GRANULOS.find(x => x[0] === o.gran);
+  if (gr && ["grenu"].includes(m.fam)) t += " " + acc(gr);
+  const sec = o.sec.filter(k => !k.startsWith(m.lib.toLowerCase().slice(0, 4))).map(k => SECONDAIRES.find(x => x[0] === k)).filter(Boolean);
   const adj = sec.filter(x => !x[0].startsWith("à ")).map(acc), comp = sec.filter(x => x[0].startsWith("à ")).map(x => x[0]);
   if (adj.length) t += " " + (o.peu ? "légèrement " : "") + adj.join(" et ");
   if (comp.length) t += " " + comp.join(" et ");
-  const cols = o.coul.map(k => COULEURS.find(x => x[0] === k)).filter(Boolean).map(acc);
-  if (cols.length) t += " " + cols.join(" à ");
+  const nu = NUANCES.find(x => x[0] === o.nuance);
+  const cols = o.coul.map(k => COULEURS.find(x => x[0] === k)).filter(Boolean).map(x => nu ? x[0] : acc(x));
+  if (cols.length) t += " " + cols.join(" à ") + (nu ? " " + nu[0] : "");
+  const el = (o.elem || []).filter(k => ELEMENTS.some(x => x[0] === k));
+  if (el.length) t += ", " + el.join(", ");
   const etats = (ETATS[m.fam] || []).filter(x => x[0] === o.etat).map(acc);
   const hum = HUMIDITES.filter(x => x[0] === o.hum).map(acc);
   const fin = [...etats, ...hum];
@@ -692,33 +850,57 @@ function suivreProfLitho(s) {
   }
   return false;
 }
-function editerCouche(s, i) {
-  const L = s.lithologie, c = i == null ? null : L[i];
-  const prec = i == null ? L[L.length - 1] : L[i - 1];
-  const o = c && c.guide ? JSON.parse(JSON.stringify(c.guide)) : { mat: null, sec: [], peu: false, coul: [], etat: null, hum: null, plus: "" };
-  const v = { de: c ? c.de : (prec ? prec.a : 0), a: c ? c.a : null, description: c ? c.description : "" };
-  let manuel = !!(c && !c.guide && c.description);
-  const zDesc = h("textarea", { rows: 3, oninput: () => { v.description = zDesc.value; manuel = true; } }); zDesc.value = v.description;
+/* guide de description par étiquettes (NF EN ISO 14688-1) : couches et passes de carottes.
+   o = {mat, gran, sec[], peu, coul[], nuance, etat, hum, elem[], plus} ; change() après chaque choix. */
+const guideVide = () => ({ mat: null, gran: null, sec: [], peu: false, coul: [], nuance: null, etat: null, hum: null, elem: [], plus: "" });
+function guideLitho(o, change, opts = {}) {
+  o.sec = o.sec || []; o.coul = o.coul || []; o.elem = o.elem || [];
   const zChips = h("div", { style: { display: "flex", flexDirection: "column", gap: "12px" } });
-  const majDesc = () => { if (!manuel) { v.description = phrase(o); zDesc.value = v.description; } };
   const groupe = (titre, items, estOn, basculer) => h("div", { style: { display: "flex", flexDirection: "column", gap: "6px" } }, h("span", { class: "doux", style: { fontWeight: 600, fontSize: "12.5px" } }, titre),
-    h("div", { class: "chips" }, ...items.map(([k, l]) => h("button", { class: "chip" + (estOn(k) ? " on" : ""), "aria-pressed": estOn(k) ? "true" : "false", onclick: () => { basculer(k); dessiner(); majDesc(); } }, l))));
+    h("div", { class: "chips" }, ...items.map(([k, l]) => h("button", { type: "button", class: "chip" + (estOn(k) ? " on" : ""), "aria-pressed": estOn(k) ? "true" : "false", onclick: () => { basculer(k); dessiner(); change(); } }, l))));
   const dessiner = () => {
     zChips.innerHTML = "";
-    zChips.append(groupe("Matériau principal", MATERIAUX.map(m => [m[0], m[1]]), k => o.mat === k, k => { o.mat = o.mat === k ? null : k; o.etat = null; }));
+    zChips.append(groupe("Matériau principal", MATERIAUX.map(m => [m[0], m[1]]), k => o.mat === k, k => {
+      o.mat = o.mat === k ? null : k; o.etat = null;
+      const m2 = MAT[o.mat];
+      if (m2) { o.sec = o.sec.filter(x => !x.startsWith(m2.lib.toLowerCase().slice(0, 4))); if (m2.fam !== "grenu") o.gran = null; }   // pas d'« argile argileuse »
+    }));
     const m = MAT[o.mat];
     if (!m) return;
+    if (m.fam === "grenu") zChips.append(groupe("Granulométrie", GRANULOS.map(x => [x[0], x[0]]), k => o.gran === k, k => { o.gran = o.gran === k ? null : k; }));
     zChips.append(groupe("Fraction secondaire", SECONDAIRES.filter(x => !(x[0].startsWith(m.lib.toLowerCase().slice(0, 4)))).map(x => [x[0], x[0]]).concat([["peu", "légèrement"]]),
       k => k === "peu" ? o.peu : o.sec.includes(k), k => { if (k === "peu") o.peu = !o.peu; else o.sec = o.sec.includes(k) ? o.sec.filter(x => x !== k) : [...o.sec, k]; }));
-    zChips.append(groupe("Couleur (deux au plus)", COULEURS.map(x => [x[0], x[0]]), k => o.coul.includes(k), k => { o.coul = o.coul.includes(k) ? o.coul.filter(x => x !== k) : [...o.coul, k].slice(-2); }));
+    zChips.append(groupe("Couleur (deux au plus)", COULEURS.map(x => [x[0], x[0]]).concat(NUANCES.map(x => ["~" + x[0], x[0]])),
+      k => k[0] === "~" ? o.nuance === k.slice(1) : o.coul.includes(k),
+      k => { if (k[0] === "~") o.nuance = o.nuance === k.slice(1) ? null : k.slice(1); else o.coul = o.coul.includes(k) ? o.coul.filter(x => x !== k) : [...o.coul, k].slice(-2); }));
+    zChips.append(groupe("Particularités", ELEMENTS.map(x => [x[0], x[0]]), k => o.elem.includes(k), k => { o.elem = o.elem.includes(k) ? o.elem.filter(x => x !== k) : [...o.elem, k]; }));
     if ((ETATS[m.fam] || []).length) zChips.append(groupe(m.fam === "fin" ? "Consistance" : m.fam === "grenu" ? "Compacité" : "État de la roche", ETATS[m.fam].map(x => [x[0], x[0]]), k => o.etat === k, k => { o.etat = o.etat === k ? null : k; }));
     zChips.append(groupe("Humidité", HUMIDITES.map(x => [x[0], x[0]]), k => o.hum === k, k => { o.hum = o.hum === k ? null : k; }));
   };
   dessiner();
-  const inPlus = h("input", { value: o.plus || "", placeholder: "ex. avec quelques débris de briques", oninput: () => { o.plus = inPlus.value; majDesc(); } });
+  const inPlus = h("input", { value: o.plus || "", placeholder: "ex. galets Ø 5 cm, odeur d'hydrocarbures", oninput: () => { o.plus = inPlus.value; change(); } });
+  const symb = c => h("button", { class: "mini symb", type: "button", "aria-label": "Insérer " + c, onpointerdown: e => e.preventDefault(), onclick: () => {
+    const d0 = document.activeElement === inPlus ? inPlus.selectionStart : inPlus.value.length, d1 = document.activeElement === inPlus ? inPlus.selectionEnd : d0;
+    inPlus.value = inPlus.value.slice(0, d0) + c + inPlus.value.slice(d1); inPlus.focus(); inPlus.setSelectionRange(d0 + c.length, d0 + c.length); o.plus = inPlus.value; change(); } }, c);
+  const el = h("div", { class: "guide-litho" },
+    opts.precedent ? h("button", { type: "button", class: "mini", style: { alignSelf: "flex-start" }, onclick: () => { Object.assign(o, guideVide(), JSON.parse(JSON.stringify(opts.precedent))); inPlus.value = o.plus || ""; dessiner(); change(); } }, "Comme " + (opts.libPrecedent || "la précédente")) : null,
+    zChips, h("label", { class: "ch" }, "Complément", h("div", { class: "ligne", style: { gap: "6px", flexWrap: "nowrap" } }, inPlus, symb("Ø"))));
+  el.redessiner = () => { inPlus.value = o.plus || ""; dessiner(); };
+  return el;
+}
+function editerCouche(s, i) {
+  const L = s.lithologie, c = i == null ? null : L[i];
+  const prec = i == null ? L[L.length - 1] : L[i - 1];
+  const o = Object.assign(guideVide(), c && c.guide ? JSON.parse(JSON.stringify(c.guide)) : {});
+  const v = { de: c ? c.de : (prec ? prec.a : 0), a: c ? c.a : null, description: c ? c.description : "" };
+  let manuel = !!(c && !c.guide && c.description);
+  const zDesc = h("textarea", { rows: 3, oninput: () => { v.description = zDesc.value; manuel = true; } }); zDesc.value = v.description;
+  const majDesc = () => { if (!manuel) { v.description = phrase(o); zDesc.value = v.description; } };
+  const precG = prec && prec.guide;
+  const zGuide = guideLitho(o, majDesc, { precedent: precG, libPrecedent: "la couche précédente" });
   feuille(i == null ? "Nouvelle couche" : "Couche " + fr(v.de, 2) + " – " + fr(v.a, 2) + " m", [
     h("div", { class: "g2" }, champ("De (m)", v, "de", { type: "num" }), champ("À (m)", v, "a", { type: "num" })),
-    zChips, h("label", { class: "ch" }, "Complément", inPlus),
+    zGuide,
     h("label", { class: "ch" }, h("span", { class: "ligne" }, "Description", h("span", { class: "esp" }), h("button", { class: "mini", type: "button", onclick: () => { manuel = false; majDesc(); } }, "Recomposer")), zDesc),
     i != null ? h("button", { class: "dang", onclick: () => { L.splice(i, 1); suivreProfLitho(s); sauver(); document.querySelector(".feuille").remove(); rendre(); } }, "Supprimer cette couche") : null,
   ], f => [h("button", { class: "prim", onclick: () => {
@@ -774,8 +956,9 @@ function chainerCarottes(s) {
     prec = p;
   }
 }
-function passesCarotte(p) {
+function passesCarotte(p, s) {
   const bloc = h("div", { class: "passes" });
+  const ouverts = new Set();                         // passes dont le guide par étiquettes est ouvert
   const resume = () => { p.legende = p.passes.map(x => x.description).filter(Boolean).join(" / "); sauver(); };
   const nb = (q, cle, apres) => { const i = h("input", { type: "text", inputmode: "decimal", class: "num", placeholder: "m", value: q[cle] == null ? "" : fr(q[cle], 2) });
     i.addEventListener("change", () => { q[cle] = num(i.value); i.value = q[cle] == null ? "" : fr(q[cle], 2); sauver(); apres && apres(); }); return i; };
@@ -783,8 +966,18 @@ function passesCarotte(p) {
     bloc.innerHTML = "";
     bloc.append(h("b", { style: { fontSize: "14px" } }, "Description lithologique"));
     p.passes.forEach((q, k) => {
-      const ta = h("textarea", { rows: 2, placeholder: "ex. sable fin marron clair, humide", oninput: () => { q.description = ta.value; resume(); } });
+      const ta = h("textarea", { rows: 2, placeholder: "ex. sable fin marron clair, humide", oninput: () => { q.description = ta.value; q.manuel = true; resume(); } });
       ta.value = q.description || "";
+      // guide par étiquettes (comme les couches) ; « Comme la passe précédente » reprend la dernière passe décrite, même d'une autre caisse
+      const avant = (() => { const toutes = (s ? s.photos : [p]).flatMap(ph => ph.passes || []); const ix = toutes.indexOf(q); return toutes.slice(0, ix).reverse().find(x => x.guide && x.guide.mat); })();
+      const ouvert = ouverts.has(q);
+      const bGuide = h("button", { class: "mini" + (ouvert ? " prim" : ""), type: "button", onclick: () => { ouvert ? ouverts.delete(q) : ouverts.add(q); dessiner(); } }, ouvert ? "Fermer les étiquettes" : "Étiquettes");
+      let zg = null;
+      if (ouvert) {
+        q.guide = Object.assign(guideVide(), q.guide || {});
+        zg = guideLitho(q.guide, () => { if (!q.manuel) { q.description = phrase(q.guide); ta.value = q.description; } resume(); },
+          { precedent: avant && avant.guide, libPrecedent: "la passe précédente" });
+      }
       // Ø au curseur (pas de raccourci au clavier du téléphone) ; le bouton ne prend pas le focus : le clavier reste ouvert
       const symb = c => h("button", { class: "mini symb", type: "button", "aria-label": "Insérer " + c, onpointerdown: e => e.preventDefault(), onclick: () => {
         const d0 = document.activeElement === ta ? ta.selectionStart : ta.value.length, d1 = document.activeElement === ta ? ta.selectionEnd : d0;
@@ -796,11 +989,15 @@ function passesCarotte(p) {
           nb(q, "a", () => { const sv = p.passes[k + 1]; if (sv && q.a != null) { sv.de = q.a; dessiner(); } }), h("span", { class: "doux" }, "m"),
           h("span", { class: "esp" }), symb("Ø"),
           h("button", { class: "mini dang", "aria-label": "Retirer cette passe", onclick: () => { p.passes.splice(k, 1); resume(); dessiner(); } }, "×")),
-        ta));
+        ta,
+        h("div", { class: "ligne", style: { gap: "6px" } }, bGuide,
+          q.manuel && q.guide && q.guide.mat ? h("button", { class: "mini", type: "button", onclick: () => { q.manuel = false; q.description = phrase(q.guide); resume(); dessiner(); } }, "Recomposer") : null),
+        zg));
     });
     bloc.append(h("button", { onclick: () => {
       const der = p.passes[p.passes.length - 1], de = der ? der.a : p.de;
-      p.passes.push({ de: de == null ? null : +de, a: p.a == null || (de != null && +p.a <= +de) ? null : +p.a, description: "" });
+      const nq = { de: de == null ? null : +de, a: p.a == null || (de != null && +p.a <= +de) ? null : +p.a, description: "" };
+      p.passes.push(nq); ouverts.add(nq);              // nouvelle passe : étiquettes ouvertes d'emblée
       sauver(); dessiner(); const z = bloc.querySelectorAll("textarea"); if (z.length) z[z.length - 1].focus();
     } }, p.passes.length ? "+ Passe" : "+ Décrire cette caisse"));
   };
@@ -815,7 +1012,7 @@ function editerPhoto(s, i, avecProf) {
   feuille("Photo " + (i + 1), [h("img", { src: p.data, alt: "", style: { borderRadius: "12px", maxHeight: "50vh", objectFit: "contain", background: "#000" } }),
     avecProf ? h("div", { class: "g2" }, cDe, champ("À (m)", p, "a", { type: "num", apres: () => {
       if (carotte) { const der = p.passes[p.passes.length - 1]; if (der && der.a == null) der.a = p.a; chainerCarottes(s); } } })) : null,
-    carotte ? passesCarotte(p) : champ("Légende", p, "legende", { ph: "ex. fouille côté façade nord" }),
+    carotte ? passesCarotte(p, s) : champ("Légende", p, "legende", { ph: "ex. fouille côté façade nord" }),
     h("button", { class: "dang", onclick: () => { s.photos.splice(i, 1); sauver(); document.querySelector(".feuille").remove(); rendre(); } }, "Supprimer la photo")],
   f => [h("button", { class: "prim", onclick: () => { sauver(); f(); rendre(); } }, "OK")]);
 }
@@ -1379,6 +1576,91 @@ function placerEtiquettes(L, rayon) {
   return L;
 }
 
+/* ---- guidage vers les sondages implantés (Terrain 1.22) : position suivie (watchPosition), distance et direction
+   de la cible, boussole si le téléphone en a une (cap magnétique, iOS : webkitCompassHeading ; Android :
+   deviceorientationabsolute). « Réaliser ici » relève la position : le sondage passe réalisé, écart noté. */
+const GUIDE = { watch: null, orient: null, pos: null, cap: null };
+function arreterGuidage() {
+  if (GUIDE.watch != null && navigator.geolocation) navigator.geolocation.clearWatch(GUIDE.watch);
+  GUIDE.watch = null;
+  if (GUIDE.orient) { window.removeEventListener("deviceorientationabsolute", GUIDE.orient, true); window.removeEventListener("deviceorientation", GUIDE.orient, true); GUIDE.orient = null; }
+}
+function vueGuidage() {
+  const d = D();
+  if (!d) { PILE = [{ v: "accueil" }]; return vueAccueil(); }
+  entete("Guidage", d.numero || d.nom || "");
+  barre(h("button", { onclick: () => aller({ v: "plan", d: d.id }) }, "Voir sur le plan"));
+  const zCible = h("div", { class: "carte guide" }), zListe = h("div");
+  let cibleId = vue().s || null, manuel = !!vue().s, fleche = null, nord = null, txtDir = null, capCible = null;
+  const dist = s => GUIDE.pos ? distM(GUIDE.pos.lat, GUIDE.pos.lon, s.implantation.lat, s.implantation.lon) : null;
+  const tourner = () => {
+    if (fleche && capCible != null) fleche.style.transform = "rotate(" + (capCible - (GUIDE.cap || 0)) + "deg)";
+    if (nord) nord.style.transform = "rotate(" + (-(GUIDE.cap || 0)) + "deg)";
+  };
+  const maj = () => {
+    const L = d.sondages.filter(s => s.implantation), restants = L.filter(aRealiser);
+    const tri = restants.slice().sort((a, b) => (dist(a) ?? 1e9) - (dist(b) ?? 1e9));
+    if (!manuel || !restants.some(s => s.id === cibleId)) { cibleId = (tri[0] || {}).id || null; manuel = false; }    // par défaut : le plus proche
+    const c = d.sondages.find(s => s.id === cibleId);
+    zCible.innerHTML = ""; fleche = nord = null; capCible = null;
+    if (!c) zCible.append(h("div", { class: "vide" }, L.length ? "Tous les sondages implantés sont réalisés." : "Aucune implantation : depuis l'accueil, « Recevoir un plan / implantation »."));
+    else {
+      const pos = GUIDE.pos, dm = dist(c);
+      capCible = pos ? capDeg(pos.lat, pos.lon, c.implantation.lat, c.implantation.lon) : null;
+      const arrive = dm != null && dm <= Math.max(3, Math.min(8, pos.acc || 5));
+      fleche = h("div", { class: "guide-fleche" + (arrive ? " ok" : "") }); fleche.innerHTML = '<svg viewBox="-50 -50 100 100"><path d="M0-42L22 30L0 16L-22 30Z"/></svg>';
+      nord = h("div", { class: "guide-nord" }, h("span", {}, "N"));
+      txtDir = h("div", { class: "guide-dir" }, !pos ? "Recherche de la position…" : arrive ? "Vous y êtes : relevez la position" : direction(capCible) + (GUIDE.cap == null ? " (flèche : nord en haut)" : ""));
+      zCible.append(
+        h("div", { class: "guide-nom" }, h("span", { class: "badge", style: { background: TYPES[c.type][1] } }, c.type), h("b", {}, c.nom),
+          c.prof_prevue != null ? h("span", { class: "doux" }, "prof. prévue " + fr(c.prof_prevue, 1) + " m") : null),
+        h("div", { class: "guide-rose" }, nord, pos ? fleche : null),
+        h("div", { class: "guide-dist" + (arrive ? " ok" : "") }, dm == null ? "…" : dm < 1000 ? Math.round(dm) + " m" : fr(dm / 1000, 2) + " km"),
+        txtDir,
+        h("div", { class: "doux", style: { fontSize: "13px" } }, pos ? "Précision GPS ± " + Math.round(pos.acc) + " m" + (dm != null && dm < pos.acc ? " : à cette distance, fiez-vous au piquet" : "") : ""),
+        h("div", { class: "ligne", style: { gap: "8px", justifyContent: "center", marginTop: "6px" } },
+          h("button", { class: arrive ? "prim" : "", onclick: () => {
+            // position suivie en continu par le guidage : utilisée directement si elle a moins de 10 s
+            const go = () => { manuel = false; const P_ = GUIDE.pos;
+              releverGps(c, () => { maj(); }, P_ && Date.now() - P_.t < 10000 ? { latitude: P_.lat, longitude: P_.lon, accuracy: P_.acc } : null); };
+            if (dm != null && dm > 15) confirmer("Vous êtes à " + Math.round(dm) + " m de l'implantation de " + c.nom + ". Réaliser le sondage ici quand même ?", go, "Réaliser ici"); else go(); } }, "Réaliser ici"),
+          h("button", { onclick: () => aller({ v: "sondage", d: d.id, s: c.id }) }, "Ouvrir " + c.nom)),
+        boussoleIos ? h("button", { class: "mini", onclick: activerBoussole }, "Activer la boussole") : null);
+      tourner();
+    }
+    zListe.innerHTML = "";
+    if (tri.length > 1 || L.some(s => s.realise)) zListe.append(h("h2", {}, "Sondages implantés"), h("div", { class: "carte" }, h("div", { class: "liste" },
+      ...tri.map(s => { const dm = dist(s); return h("div", { class: "it" + (s.id === cibleId ? " on" : ""), onclick: () => { cibleId = s.id; manuel = true; maj(); } },
+        h("span", { class: "badge", style: { background: TYPES[s.type][1] } }, s.type), h("div", { class: "t" }, h("b", {}, s.nom),
+          h("span", {}, dm == null ? "à réaliser" : (dm < 1000 ? Math.round(dm) + " m " : fr(dm / 1000, 2) + " km ") + direction(capDeg(GUIDE.pos.lat, GUIDE.pos.lon, s.implantation.lat, s.implantation.lon)))),
+        s.id === cibleId ? h("span", { class: "pill" }, "cible") : h("span", { class: "fl" }, "›")); }),
+      ...L.filter(s => s.realise).map(s => h("div", { class: "it", onclick: () => aller({ v: "sondage", d: d.id, s: s.id }) },
+        h("span", { class: "badge", style: { background: TYPES[s.type][1], opacity: .55 } }, s.type), h("div", { class: "t" }, h("b", {}, s.nom),
+          h("span", {}, "réalisé · écart " + fr(s.realise.ecart, 1) + " m")), h("span", { class: "pill ok" }, "✓"))))));
+  };
+  // capteurs
+  const boussoleIos = typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function" && GUIDE.cap == null;
+  const ecouter = () => {
+    if (GUIDE.orient) return;
+    GUIDE.orient = e => {
+      const hd = e.webkitCompassHeading != null ? e.webkitCompassHeading : (e.absolute && e.alpha != null ? (360 - e.alpha) % 360 : null);
+      if (hd == null) return;
+      const premier = GUIDE.cap == null; GUIDE.cap = hd;
+      if (premier) maj(); else tourner();
+    };
+    window.addEventListener("deviceorientationabsolute", GUIDE.orient, true);
+    window.addEventListener("deviceorientation", GUIDE.orient, true);
+  };
+  const activerBoussole = async () => { try { if (await DeviceOrientationEvent.requestPermission() === "granted") ecouter(); } catch (e) { toast("Boussole indisponible : la flèche reste orientée nord en haut."); } };
+  if (!boussoleIos) ecouter();
+  if (navigator.geolocation && GUIDE.watch == null)
+    GUIDE.watch = navigator.geolocation.watchPosition(p => { GUIDE.pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, t: Date.now() }; maj(); },
+      e => toast(e.code === 1 ? "Accès à la position refusé : autorisez-le dans les réglages du téléphone." : "Position indisponible (" + e.message + ")."),
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
+  maj();
+  return [zCible, zListe,
+    h("p", { class: "doux", style: { fontSize: "12.5px", margin: "4px 2px" } }, "La flèche montre le sondage cible ; « Réaliser ici » relève la position (sondage réalisé, écart avec l'implantation noté et transmis à HORUS). Boussole : tenir le téléphone à plat, loin des masses métalliques (machine, camion).")];
+}
 function vuePlan() {
   const d = D();
   const v = vue();
@@ -1415,7 +1697,7 @@ function vuePlan() {
     const W = boite.clientWidth || 360, H = boite.clientHeight || 420, x0 = v.c[0] - W / 2, y0 = v.c[1] - H / 2;
     const L = loc.map(s => {
       const [a, b] = px(s.lat, s.lon, v.z), sx = a - x0, sy = b - y0;
-      const m = h("button", { class: "rep-son sym", "aria-label": "Ouvrir " + s.nom, style: { left: sx + "px", top: sy + "px" },
+      const m = h("button", { class: "rep-son sym" + (aRealiser(s) ? " prevu" : ""), "aria-label": "Ouvrir " + s.nom + (aRealiser(s) ? " (prévu)" : ""), style: { left: sx + "px", top: sy + "px" },
         onclick: e => { e.stopPropagation(); aller({ v: "sondage", d: d.id, s: s.id }); } });
       m.innerHTML = symboleSondage(s.type, TYPES[s.type][1], 26);
       const el = h("span", { class: "rep-etiq", "data-sid": s.id, style: { visibility: "hidden" } }, s.nom);
@@ -2489,6 +2771,8 @@ async function exporter(d) {
 }
 
 // ------------------------------------------------------------ démarrage
+setInterval(() => { try { tickChrono(); } catch (e) { /* jamais bloquant */ } }, 500);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && chronosEnCours().length) { VEILLE = null; garderEcran(true); } });
 (async () => {
   await ouvrirBase();
   try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) { /* facultatif */ }
