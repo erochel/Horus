@@ -63,6 +63,10 @@ button.mini{min-height:36px;font-size:14px;padding:0 10px;border-radius:9px}
 .badge{font:700 12px var(--titre);letter-spacing:.4px;padding:5px 8px;border-radius:7px;color:#fff;min-width:42px;text-align:center;flex:0 0 auto}
 .pill{display:inline-block;font-size:12px;padding:3px 8px;border-radius:20px;background:var(--champ);color:var(--doux);border:1px solid var(--ligne)}
 .pill.ok{background:#E7F3D6;color:#43611A;border-color:#CFE5AD}
+.pill.du{background:#FDE7E7;color:#9B1C1C;border-color:#F3B4B4;font-weight:600}
+.pill.bientot{background:#FFF4DE;color:#7A4B00;border-color:#F2D9A6}
+.suivi-pz{background:#EEF5E2;border:1px solid #CFE5AD;color:#36501A;border-radius:12px;padding:9px 12px;font-size:13.5px}
+.suivi-pz.fini{background:var(--champ);border-color:var(--ligne);color:var(--doux)}
 .vide{color:var(--doux);text-align:center;padding:18px 8px;font-size:14px}
 .chips{display:flex;flex-wrap:wrap;gap:7px}
 .chip{border-radius:20px;min-height:36px;padding:0 12px;font-weight:500;font-size:14px;background:var(--champ)}
@@ -133,7 +137,7 @@ button.mini{min-height:36px;font-size:14px;padding:0 10px;border-radius:9px}
 .leg-geol div{display:grid;grid-template-columns:18px 54px 1fr;gap:8px;align-items:start;font-size:13px}
 .leg-geol i{width:18px;height:14px;border-radius:3px;margin-top:2px;border:1px solid rgba(0,0,0,.15)}
 .leg-geol span{min-width:0}
-.onglets{display:grid;grid-template-columns:1fr 1fr;background:var(--champ);border:1px solid var(--ligne);border-radius:12px;padding:3px;gap:3px}
+.onglets{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));background:var(--champ);border:1px solid var(--ligne);border-radius:12px;padding:3px;gap:3px}
 .onglets button{border:0;background:transparent;min-height:40px;border-radius:9px;color:var(--doux)}
 .onglets button.on{background:var(--carte);color:var(--texte);box-shadow:var(--ombre)}
 .semaine{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
@@ -234,7 +238,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.23";
+const VERSION_APP = "1.24";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -358,10 +362,10 @@ function barre(...btns) { const b = $("#barre"); b.innerHTML = ""; const l = btn
 function rendre() {
   const m = $("#main"); m.innerHTML = "";
   const v = vue().v;
-  if (v === "accueil") m.append(...vueAccueil());
-  else if (v === "dossier") m.append(...vueDossier());
+  if (v === "accueil") m.append(...vueAccueil().filter(Boolean));
+  else if (v === "dossier") m.append(...vueDossier().filter(Boolean));
   else if (v === "sondage") m.append(...vueSondage().filter(Boolean));
-  else if (v === "tournee") m.append(...vueTournee());
+  else if (v === "tournee") m.append(...vueTournee().filter(Boolean));
   else if (v === "carte") m.append(...vueCarte().filter(Boolean));
   else if (v === "plan") m.append(...vuePlan().filter(Boolean));
   else if (v === "guidage") m.append(...vueGuidage().filter(Boolean));
@@ -399,6 +403,7 @@ function confirmer(texte, oui, libelle = "Supprimer") {
 // ------------------------------------------------------------ accueil
 function vueAccueil() {
   if (ONGLET === "tech") return vueTech();
+  if (ONGLET === "piezo") return vueTourneePiezo();
   entete("HORUS Terrain", "Sondages · GINGER CEBTP");
   barre(h("button", { class: "prim", onclick: nouveauDossier }, "+ Nouveau dossier"), h("button", { onclick: recevoirPlan, title: "Plan préparé dans HORUS (Implantation › Envoyer le plan au téléphone) ou implantation provisoire de RÂ" }, "Recevoir un plan / implantation"));
   const out = [ongletsAccueil()];
@@ -453,6 +458,7 @@ function vueDossier() {
     h("div", { class: "carte" }, ordre.length ? h("div", { class: "liste" }, ...ordre.map(s => h("div", { class: "it", onclick: () => aller({ v: "sondage", d: d.id, s: s.id }) },
       h("span", { class: "badge", style: { background: TYPES[s.type][1] } }, s.type),
       h("div", { class: "t" }, h("b", {}, s.nom), h("span", {}, resume(s))), h("span", { class: "fl" }, "›")))) : h("div", { class: "vide" }, "Aucun sondage. Touchez « + Sondage ».")),
+    ...carteSuiviDossier(d),
     ...planningDossier(d),
     h("h2", {}, "Dossier"),
     h("div", { class: "carte" }, champ("Numéro d'affaire", d, "numero", { caps: "characters" }), champ("Nom", d, "nom"), champ("Commune", d, "commune"),
@@ -704,7 +710,91 @@ function cartePorchet(s) {
     h("p", { class: "doux", style: { margin: 0, fontSize: "13px" } }, "« Démarrer l'essai » au remplissage : le téléphone vibre 10 s avant chaque temps, puis sonne et ouvre la case de la lecture. Notez la baisse H lue sous le repère (niveau initial). Les temps se modifient librement."),
     zone, outils, res);
 }
-const piezoVide = () => ({ hauteur_tete: null, prof_tube: null, crepine_de: null, crepine_a: null, ref: "tete", releves: [] });
+const piezoVide = () => ({ hauteur_tete: null, prof_tube: null, crepine_de: null, crepine_a: null, protection: "", capot_h: null, ref: "tete", releves: [] });
+/* ---------- suivi piézométrique du dossier (tournée) : d.suivi_piezo = {actif, debut, mois, mode "manuel" | "auto", freq (jours)} */
+const FREQ_PZ = [[7, "Hebdomadaire"], [14, "Tous les 15 jours"], [30, "Mensuel"], [61, "Tous les 2 mois"], [91, "Trimestriel"]];
+const pzDe = d => d.sondages.filter(s => s.type === "PZ" || s.piezo);
+function ajouterMois(j, n) { const x = dIso(j), jour = x.getDate(); x.setMonth(x.getMonth() + n); if (x.getDate() < jour) x.setDate(0); return iso(x); }
+const ecartJ = (a, b) => Math.round((dIso(b) - dIso(a)) / 864e5);
+function resteTxt(j) {
+  if (j <= 0) return "suivi terminé";
+  const m = Math.floor(j / 30.44), r = Math.round(j - m * 30.44);
+  return "reste " + (m ? m + " mois" + (r ? " et " + r + " j" : "") : j + " jour" + (j > 1 ? "s" : ""));
+}
+function suiviPz(d) {
+  const S_ = d.suivi_piezo;
+  if (!S_ || !S_.actif) return null;
+  const auj = aujourdhui(), pz = pzDe(d);
+  const debut = S_.debut || pz.map(s => s.date).filter(Boolean).sort()[0] || auj;
+  const mois = +S_.mois > 0 ? +S_.mois : null, freq = +S_.freq || 30;
+  const fin = mois ? ajouterMois(debut, mois) : null;
+  const dates = pz.flatMap(s => ((s.piezo && s.piezo.releves) || []).map(r => r.date)).filter(Boolean).sort();
+  const dernier = dates[dates.length - 1] || null;
+  const prochain = dernier ? decaler(dernier, freq) : (debut > auj ? debut : auj);
+  const termine = fin ? auj > fin : false;
+  // relevés du passage en cours : ouvrages déjà relevés depuis le début de la période
+  const depuis = dernier && ecartJ(dernier, auj) < Math.max(2, freq / 3) ? decaler(auj, -Math.max(1, Math.floor(freq / 3))) : auj;
+  const faits = pz.filter(s => ((s.piezo && s.piezo.releves) || []).some(r => r.date >= depuis)).length;
+  const avance = ecartJ(auj, prochain);                       // < 0 : en retard
+  const etat = termine ? "fini" : faits && faits < pz.length && ecartJ(depuis, auj) <= 1 ? "encours" : avance <= 1 ? "du" : avance <= 5 ? "bientot" : "ok";
+  return { debut, fin, mois, freq, mode: S_.mode === "auto" ? "auto" : "manuel", dernier, prochain, termine, reste: fin ? ecartJ(auj, fin) : null,
+    n: pz.length, faits, avance, etat, nbPrevu: mois ? Math.max(1, Math.round(ecartJ(debut, fin) / freq)) : null, nbFait: new Set(dates.filter(x => x >= debut)).size };
+}
+function bandeauSuivi(d) {
+  const q = suiviPz(d);
+  if (!q) return null;
+  const lib = FREQ_PZ.find(f => f[0] === q.freq);
+  return h("div", { class: "suivi-pz" + (q.termine ? " fini" : "") },
+    h("b", {}, "Suivi " + (q.mois ? q.mois + " mois" : "sans fin fixée") + " · " + (q.mode === "auto" ? "sonde automatique" : "relevés manuels")),
+    h("div", {}, "Depuis le " + dateFr(q.debut) + (q.fin ? " · fin le " + dateFr(q.fin) + " · " + resteTxt(q.reste) : "")),
+    h("div", {}, (lib ? lib[1] : "Tous les " + q.freq + " j") + " · " + (q.nbPrevu ? "passage " + Math.min(q.nbFait, q.nbPrevu) + " / " + q.nbPrevu : q.nbFait + " passage(s)") +
+      (q.dernier ? " · dernier le " + dateFr(q.dernier) : "") + (!q.termine ? " · prochain " + (q.avance < 0 ? "en retard de " + (-q.avance) + " j" : q.avance === 0 ? "aujourd'hui" : "le " + dateFr(q.prochain)) : "")));
+}
+function carteSuiviDossier(d) {
+  const S_ = d.suivi_piezo = d.suivi_piezo || { actif: false, debut: "", mois: null, mode: "manuel", freq: 30 };
+  const cb = h("input", { type: "checkbox", checked: !!S_.actif, style: { width: "24px", height: "24px" }, onchange: () => {
+    S_.actif = cb.checked;
+    if (S_.actif && !S_.debut) S_.debut = pzDe(d).map(s => s.date).filter(Boolean).sort()[0] || aujourdhui();
+    sauver(d); rendre(); } });
+  return [h("h2", {}, "Suivi piézométrique"), h("div", { class: "carte" },
+    h("label", { class: "ligne", style: { fontSize: "15.5px", fontWeight: 600, gap: "10px" } }, cb, "Tournée piézo sur ce dossier"),
+    S_.actif ? h("div", { class: "g2" }, champ("Début du suivi", S_, "debut", { type: "date", apres: () => rendre() }), champ("Durée (mois)", S_, "mois", { type: "num", ph: "ex. 6", apres: () => rendre() })) : null,
+    S_.actif ? h("div", { class: "g2" }, champ("Relevés", S_, "mode", { type: "select", options: [["manuel", "Manuels (sonde lumineuse)"], ["auto", "Automatiques (sonde enregistreuse)"]], apres: () => rendre() }),
+      champ("Fréquence", S_, "freq", { type: "select", options: FREQ_PZ.map(([k, l]) => [String(k), l]), apres: () => { S_.freq = +S_.freq; rendre(); } })) : null,
+    S_.actif ? bandeauSuivi(d) : h("p", { class: "doux", style: { margin: 0 } }, "Cochez si ce dossier a un suivi des piézomètres : il apparaît alors dans l'onglet « Tournée piézo » de l'accueil, trié par urgence."),
+    S_.actif && !pzDe(d).length ? h("div", { class: "alerte" }, "Aucun piézomètre dans ce dossier : créez un sondage PZ ou équipez un sondage existant.") : null)];
+}
+/* onglet de l'accueil : dossiers suivis, les plus urgents d'abord */
+function vueTourneePiezo() {
+  entete("HORUS Terrain", "Tournée piézométrique");
+  barre(h("button", { onclick: () => { ONGLET = "sondages"; try { localStorage.setItem("horus-onglet", "sondages"); } catch (e) { /* */ } rendre(); } }, "Tous les dossiers"));
+  const suivis = DOSSIERS.map(d => ({ d, q: suiviPz(d) })).filter(x => x.q);
+  const rang = { encours: 0, du: 1, bientot: 2, ok: 3, fini: 4 };
+  suivis.sort((a, b) => rang[a.q.etat] - rang[b.q.etat] || a.q.avance - b.q.avance || (a.d.numero || "").localeCompare(b.d.numero || ""));
+  const actifs = suivis.filter(x => !x.q.termine), finis = suivis.filter(x => x.q.termine);
+  const autres = DOSSIERS.filter(d => !suiviPz(d) && pzDe(d).length);
+  const ligne = ({ d, q }) => h("div", { class: "it", onclick: () => { PILE = [{ v: "accueil" }, { v: "dossier", d: d.id }]; aller({ v: "tournee", d: d.id }); } },
+    h("div", { class: "t" }, h("b", {}, (d.numero ? d.numero + " · " : "") + (d.nom || "sans nom")),
+      h("span", {}, [d.commune, q.n + " piézo" + (q.n > 1 ? "s" : ""), q.mode === "auto" ? "sonde auto" : "manuel"].filter(Boolean).join(" · ")),
+      q.fin ? h("span", { style: { color: q.termine ? "" : "#36501A", fontWeight: 600 } }, q.termine ? "Suivi terminé le " + dateFr(q.fin) : resteTxt(q.reste).replace(/^r/, "R") + " · fin " + dateFr(q.fin).replace(/\/20(\d\d)$/, "/$1")) : null,
+      h("span", { class: "doux" }, q.dernier ? "Dernier passage le " + dateFr(q.dernier) + (q.etat === "encours" ? " · " + q.faits + " / " + q.n + " relevé(s) aujourd'hui" : "") : "Aucun relevé encore")),
+    q.etat === "fini" ? h("span", { class: "pill" }, "terminé") : q.etat === "encours" ? h("span", { class: "pill bientot" }, "en cours " + q.faits + "/" + q.n)
+      : q.etat === "du" ? h("span", { class: "pill du" }, q.avance < 0 ? "retard " + (-q.avance) + " j" : "à relever")
+      : q.etat === "bientot" ? h("span", { class: "pill bientot" }, "dans " + q.avance + " j") : h("span", { class: "pill ok" }, dateFr(q.prochain).slice(0, 5)),
+    h("span", { class: "fl" }, "›"));
+  const aRelever = actifs.filter(x => ["du", "encours"].includes(x.q.etat)).length;
+  return [ongletsAccueil(),
+    h("div", { class: "suivi-pz" + (aRelever ? "" : " fini") }, aRelever ? h("b", {}, aRelever + " dossier(s) à relever") : h("b", {}, actifs.length ? "Aucun relevé dû aujourd'hui" : "Aucun suivi en cours"),
+      h("div", {}, actifs.length + " suivi(s) en cours" + (finis.length ? " · " + finis.length + " terminé(s)" : ""))),
+    h("h2", {}, "Suivis en cours"),
+    h("div", { class: "carte" }, actifs.length ? h("div", { class: "liste" }, ...actifs.map(ligne)) : h("div", { class: "vide" }, "Aucun dossier en suivi. Dans un dossier, cochez « Tournée piézo sur ce dossier ».")),
+    autres.length ? h("h2", {}, "Dossiers avec piézomètre, sans suivi") : null,
+    autres.length ? h("div", { class: "carte" }, h("div", { class: "liste" }, ...autres.map(d => h("div", { class: "it", onclick: () => aller({ v: "dossier", d: d.id }) },
+      h("div", { class: "t" }, h("b", {}, (d.numero ? d.numero + " · " : "") + (d.nom || "sans nom")), h("span", {}, pzDe(d).length + " piézo(s) · cocher le suivi dans le dossier")), h("span", { class: "fl" }, "›"))))) : null,
+    finis.length ? h("h2", {}, "Suivis terminés") : null,
+    finis.length ? h("div", { class: "carte" }, h("div", { class: "liste" }, ...finis.map(ligne))) : null,
+    h("p", { class: "doux", style: { margin: "4px" } }, "Ordre : passages en cours, puis relevés dus (retard le plus grand d'abord), puis prochains passages. Le prochain passage = dernier relevé + fréquence du suivi.")];
+}
 
 // ------------------------------------------------------------ sondage
 function vueSondage() {
@@ -1048,8 +1138,11 @@ function cartePiezo(s) {
   };
   red();
   return h("div", { class: "carte" },
+    bandeauSuivi(D()),
     h("div", { class: "g2" }, champ("Tête du tube / TN (m)", pz, "hauteur_tete", { type: "num", ph: "0,50" }), champ("Profondeur du tube (m)", pz, "prof_tube", { type: "num" })),
     h("div", { class: "g2" }, champ("Crépine de (m)", pz, "crepine_de", { type: "num" }), champ("Crépine à (m)", pz, "crepine_a", { type: "num" })),
+    h("div", { class: "g2" }, champ("Protection de la tête", pz, "protection", { type: "select", options: [["", "—"], ["bouche_cle", "Bouche à clé"], ["capot", "Capot"]], apres: () => rendre() }),
+      pz.protection === "capot" ? champ("Hauteur du capot / TN (m)", pz, "capot_h", { type: "num", ph: "0,80" }) : h("div")),
     champ("Mesures prises depuis", pz, "ref", { type: "select", options: [["tete", "la tête du tube (sonde lumineuse)"], ["TN", "le terrain naturel"]] }),
     h("button", { class: "vert", onclick: () => saisirReleve(s, red) }, "+ Relevé de niveau"), liste);
 }
@@ -1069,13 +1162,17 @@ function vueTournee() {
   barre(h("button", { class: "prim", onclick: retour }, "Terminé"));
   const pz = d.sondages.filter(s => s.type === "PZ" || s.piezo);
   pz.forEach(s => { if (!s.piezo) s.piezo = piezoVide(); });
-  return [h("p", { class: "doux", style: { margin: "0 4px" } }, "Un relevé par ouvrage, daté d'aujourd'hui. Le dernier relevé est rappelé pour repérer une valeur aberrante."),
+  const q = suiviPz(d);
+  return [bandeauSuivi(d),
+    q && q.mode === "auto" ? h("div", { class: "alerte" }, "Sonde automatique : télécharger les données de la sonde, puis faire un relevé manuel de contrôle (il sert à caler la série dans HORUS).") : null,
+    h("p", { class: "doux", style: { margin: "0 4px" } }, "Un relevé par ouvrage, daté d'aujourd'hui. Le dernier relevé est rappelé pour repérer une valeur aberrante."),
     ...pz.map(s => {
       const der = s.piezo.releves.slice().sort((a, b) => (b.date + b.heure).localeCompare(a.date + a.heure))[0];
       const fait = der && der.date === aujourdhui();
       const ligne = h("div", { class: "carte" }, h("div", { class: "ligne" }, h("span", { class: "badge", style: { background: TYPES[s.type][1] } }, s.type), h("h3", {}, s.nom), h("span", { class: "esp" }),
         fait ? h("span", { class: "pill ok" }, "fait") : null),
         h("div", { class: "doux" }, der ? "Dernier : " + dateFr(der.date) + " · " + (der.sec ? "sec" : fr(der.mesure, 2) + " m") : "Aucun relevé précédent."),
+        s.piezo.protection ? h("div", { class: "doux" }, s.piezo.protection === "capot" ? "Capot" + (s.piezo.capot_h != null ? " (" + fr(s.piezo.capot_h, 2) + " m / TN)" : "") : "Bouche à clé") : null,
         h("button", { class: fait ? "" : "vert", onclick: () => saisirReleve(s, () => rendre()) }, fait ? "Ajouter un autre relevé" : "Relever le niveau"));
       return ligne;
     })];
@@ -2059,7 +2156,7 @@ const jourLong = s => { const d = dIso(s); return ["dimanche", "lundi", "mardi",
 const sansAccent = t => (t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
 function sauverPlanning() { if (PLANNING) { clearTimeout(minuterie); minuterie = setTimeout(() => ecrire(PLANNING), 300); } }
 function ongletsAccueil() {
-  return h("div", { class: "onglets", role: "tablist" }, ...[["sondages", "Sondages"], ["tech", "Tech · planning"]].map(([k, l]) =>
+  return h("div", { class: "onglets", role: "tablist" }, ...[["sondages", "Sondages"], ["tech", "Tech · planning"], ["piezo", "Tournée piézo"]].map(([k, l]) =>
     h("button", { role: "tab", "aria-selected": ONGLET === k ? "true" : "false", class: ONGLET === k ? "on" : "", onclick: () => { ONGLET = k; try { localStorage.setItem("horus-onglet", k); } catch (e) { /* */ } rendre(); } }, l)));
 }
 function vueTech() {
@@ -2867,7 +2964,7 @@ function importerPlanning() {
 // ------------------------------------------------------------ export par mail
 function paquet(d) {
   return { format: "HORUS-terrain", version: 1, app: "HORUS Terrain " + VERSION_APP, exporte_le: new Date().toISOString(),
-    dossier: { numero: d.numero, nom: d.nom, commune: d.commune, operateur: d.operateur, machine: d.machine },
+    dossier: { numero: d.numero, nom: d.nom, commune: d.commune, operateur: d.operateur, machine: d.machine, suivi_piezo: d.suivi_piezo && d.suivi_piezo.actif ? d.suivi_piezo : null },
     sondages: d.sondages.map(s => ({ ...s, lithologie: s.lithologie.map(c => ({ de: c.de, a: c.a, description: c.description, motif: c.motif })) })) };
 }
 function telecharger(fichier) {
