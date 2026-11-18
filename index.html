@@ -3015,7 +3015,15 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden && ch
   if (!DOSSIERS.length && !STORE.ok) DOSSIERS = [];
   rendre();
   window.__horusOK = true;
-  try { if ("serviceWorker" in navigator && location.protocol === "https:" && !window.claude) navigator.serviceWorker.register("sw.js"); } catch (e) { /* hors PWA */ }
+  // mise à jour : sw.js vérifié à chaque ouverture (sans cache HTTP) ; la nouvelle version recharge la page une fois
+  try {
+    if ("serviceWorker" in navigator && location.protocol === "https:" && !window.claude) {
+      const avait = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(r => { r.update(); document.addEventListener("visibilitychange", () => { if (!document.hidden) r.update(); }); });
+      let recharge = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => { if (avait && !recharge) { recharge = true; location.reload(); } });
+    }
+  } catch (e) { /* hors PWA */ }
 })();
 </script>
 
