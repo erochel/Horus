@@ -656,7 +656,7 @@ function tickChrono() {
 /* ---------- pénétromètre dynamique (même calcul que HORUS, NF EN ISO 22476-2 annexe E, formule des Hollandais) */
 const APPAREILS_DYN = {
   "Soco10 Bordeaux": { M: 64, h: 75, A: 20, facteur: 0.836, m_acc: 10.3, m_tige: 6, pas: 20 },
-  "Soco10 Toulouse": { M: 63.9, h: 75, A: 20, facteur: 0.96, m_acc: 13, m_tige: 6, pas: 20 },
+  "Soco10 Toulouse": { M: 63.9, h: 75, A: 20, facteur: 0.82, m_acc: 13, m_tige: 6, pas: 20 },
   Autre: {},
 };
 const dynVide = () => ({ appareil: "Soco10 Bordeaux", h: 75, A: 20, facteur: 0.836, M: 64, m_acc: 10.3, m_tige: 6, L_tige: 1, pas: 20, avant_trou: 0, refus: false, z_refus: null, mesures: [] });
