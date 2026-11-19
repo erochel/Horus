@@ -99,6 +99,9 @@ button.mini{min-height:36px;font-size:14px;padding:0 10px;border-radius:9px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:30;background:#223558;color:#fff;
   padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:var(--ombre);max-width:90%}
 .alerte{background:#FFF4DE;color:#7A4B00;border-radius:12px;padding:10px 12px;font-size:13.5px}
+.ins{gap:6px}
+.ins-l{display:grid;grid-template-columns:78px 1fr;gap:8px;font-size:14.5px}
+a.bouton{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:var(--bleu,#223558);background:#fff;border:1px solid var(--ligne);border-radius:10px;padding:6px 12px;font-weight:600}
 .dyn-l{display:grid;grid-template-columns:80px 1fr 90px;gap:8px;align-items:center;padding:3px 0;border-bottom:1px solid #EEF1F5}
 .dyn-l input{min-height:40px;text-align:right;font-size:17px}
 .dyn-l b{text-align:right;font-variant-numeric:tabular-nums}
@@ -243,7 +246,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.25";
+const VERSION_APP = "1.26";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -456,6 +459,7 @@ function vueDossier() {
   const ordre = d.sondages.slice();
   const nPrevus = d.sondages.filter(aRealiser).length, nImpl = d.sondages.filter(s => s.implantation).length;
   return [
+    ...(carteInstruction(d) || []),
     cartes,
     nImpl ? h("button", { class: "plein" + (nPrevus ? " prim" : ""), onclick: () => aller({ v: "guidage", d: d.id }) }, nPrevus ? "Guidage vers les sondages prévus" : "Implantation : tous les sondages sont réalisés",
       h("small", { style: { display: "block", fontWeight: 400, opacity: .8 } }, (nImpl - nPrevus) + " réalisé(s) sur " + nImpl + " implanté(s)")) : null,
@@ -531,7 +535,19 @@ function recevoirPlan() {
       if (s.z == null && t.z != null) { s.z = +t.z; s.z_origine = t.z_origine || null; }
       if (j.format === "HORUS-plan" && s.prof == null && t.prof != null) s.prof = +t.prof;
       if (t.etiquette && isFinite(t.etiquette.dx) && isFinite(t.etiquette.dy)) s.etiquette = { dx: +t.etiquette.dx, dy: +t.etiquette.dy };
+      if (t.prof_prevue != null && isFinite(t.prof_prevue)) s.prof_prevue = +t.prof_prevue;
+      if (t.consigne) s.consigne = String(t.consigne);
     });
+    // instruction du chargé d'affaires (HORUS, onglet Instruction Tech) : fiche du dossier + créneau du planning
+    let txtIns = "";
+    if (j.instruction && typeof j.instruction === "object") {
+      const I = j.instruction;
+      d.instruction = { ...I, recu: aujourdhui() };
+      if (!d.commune && I.commune) d.commune = I.commune;
+      if (!d.machine && I.machine) d.machine = I.machine;
+      txtIns = ajouterCreneauInstruction(d) ? ", créneau ajouté au planning" : I.du ? " (planning non créé : onglet Tech)" : "";
+      txtIns = ", instruction reçue" + txtIns;
+    }
     // réseaux des DICT calés dans HORUS : remplacés à chaque envoi (affichage choisi sur le téléphone conservé par nom)
     let nRes = 0;
     if (Array.isArray(j.reseaux)) {
@@ -543,10 +559,48 @@ function recevoirPlan() {
     }
     d.maj = new Date().toISOString();
     await ecrire(d);
-    toast((nouveau ? "Dossier créé" : "Dossier mis à jour") + " : " + crees + " sondage(s) créé(s), " + places + " implantation(s) reprise(s) (" + source + ")" + (nRes ? ", " + nRes + " DICT (réseaux)" : "") + ". Guidage disponible depuis le dossier.", 5500);
-    PILE = [{ v: "accueil" }, { v: "dossier", d: d.id }]; aller({ v: "plan", d: d.id });
+    if (PLANNING && txtIns.includes("créneau")) sauverPlanning();
+    toast((nouveau ? "Dossier créé" : "Dossier mis à jour") + " : " + crees + " sondage(s) créé(s), " + places + " implantation(s) reprise(s) (" + source + ")" + (nRes ? ", " + nRes + " DICT (réseaux)" : "") + txtIns + ".", 6000);
+    PILE = [{ v: "accueil" }]; aller(j.instruction ? { v: "dossier", d: d.id } : { v: "plan", d: d.id });
+    if (!j.instruction) PILE = [{ v: "accueil" }, { v: "dossier", d: d.id }, { v: "plan", d: d.id }];
   };
   document.body.append(inp); inp.click();
+}
+/* créneau « terrain » du planning tiré de l'instruction (identifiant stable par dossier : un nouvel envoi le met à jour) */
+function ajouterCreneauInstruction(d) {
+  const I = d.instruction;
+  if (!I || !I.du || !PLANNING) return false;
+  const id = "cr_instr_" + d.id;
+  const ancien = PLANNING.creneaux.find(c => c.id === id);
+  const c = { ...(ancien || {}), id, date: I.du, date_fin: I.au && I.au > I.du ? I.au : "", sauf_we: I.sauf_we !== false, exclus: (ancien && ancien.exclus) || [],
+    debut: I.debut || "08:00", fin: I.fin || "17:00", horaires: (ancien && ancien.horaires) || {}, type: "terrain",
+    dossier: d.nom || I.nom || "", numero: d.numero || I.numero || "", adresse: I.adresse || "",
+    obs: [I.contact_nom || I.contact_tel ? "Contact : " + [I.contact_nom, I.contact_tel].filter(Boolean).join(" ") : "", I.remarques || ""].filter(Boolean).join(" · "),
+    source: "instruction", dossier_id: d.id, sondages: [] };
+  PLANNING.creneaux = PLANNING.creneaux.filter(x => x.id !== id).concat([c]);
+  return true;
+}
+/* fiche « Instruction » en tête du dossier : dates, adresse (itinéraire), client, contact (appel, SMS, mail), consignes */
+function carteInstruction(d) {
+  const I = d.instruction;
+  if (!I) return null;
+  const dates = I.du ? (I.au && I.au > I.du ? "Du " + dateFr(I.du) + " au " + dateFr(I.au) + (I.sauf_we !== false ? " (sauf week-end)" : "") : jourLong(I.du)) + (I.debut ? " · " + I.debut + (I.fin ? " – " + I.fin : "") : "") : "Dates à préciser";
+  const tel = (I.contact_tel || "").replace(/[^\d+]/g, "");
+  const ligne = (lib, v) => v ? h("div", { class: "ins-l" }, h("span", { class: "doux" }, lib), h("span", {}, v)) : null;
+  const cr = PLANNING && PLANNING.creneaux.find(c => c.id === "cr_instr_" + d.id);
+  return [h("h2", {}, "Instruction"), h("div", { class: "carte ins" },
+    h("div", { style: { fontWeight: 700, fontSize: "16px" } }, dates),
+    ligne("Adresse", I.adresse), ligne("Accès", I.acces), ligne("Client", I.client),
+    I.contact_nom || tel ? h("div", { class: "ins-l" }, h("span", { class: "doux" }, "Contact"), h("span", {}, [I.contact_nom, I.contact_tel].filter(Boolean).join(" · "))) : null,
+    ligne("Équipe", I.equipe), ligne("Machine", I.machine),
+    I.remarques ? h("div", { class: "alerte", style: { whiteSpace: "pre-wrap" } }, I.remarques) : null,
+    h("div", { class: "ligne", style: { gap: "6px", flexWrap: "wrap" } },
+      I.adresse ? h("a", { class: "bouton mini", href: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(I.adresse), target: "_blank", rel: "noopener" }, "Itinéraire") : null,
+      tel ? h("a", { class: "bouton mini", href: "tel:" + tel }, "Appeler") : null,
+      tel ? h("a", { class: "bouton mini", href: "sms:" + tel }, "SMS") : null,
+      I.contact_mail ? h("a", { class: "bouton mini", href: "mailto:" + I.contact_mail + "?subject=" + encodeURIComponent((d.numero || "") + " - sondages") }, "Mail") : null,
+      I.du && PLANNING ? h("button", { class: "mini", onclick: () => { ajouterCreneauInstruction(d); sauverPlanning(); toast(cr ? "Créneau du planning mis à jour." : "Créneau ajouté au planning."); rendre(); } }, cr ? "Remettre au planning" : "Ajouter au planning") : null),
+    h("p", { class: "doux", style: { margin: 0, fontSize: "12px" } }, "Reçue le " + dateFr(I.recu || aujourdhui()) + (I.redige_par ? " · de " + I.redige_par : "")))];
 }
 function nouveauSondage(d) {
   const derType = d.sondages.length ? d.sondages[d.sondages.length - 1].type : "SP";
@@ -655,11 +709,11 @@ function tickChrono() {
 }
 /* ---------- pénétromètre dynamique (même calcul que HORUS, NF EN ISO 22476-2 annexe E, formule des Hollandais) */
 const APPAREILS_DYN = {
-  "Soco10 Bordeaux": { M: 64, h: 75, A: 20, facteur: 0.836, m_acc: 10.3, m_tige: 6, pas: 20 },
-  "Soco10 Toulouse": { M: 63.9, h: 75, A: 20, facteur: 0.82, m_acc: 13, m_tige: 6, pas: 20 },
+  "Soco10 Bordeaux": { M: 64, h: 75, A: 20, facteur: 0.836, m_acc: 10.3, m_tige: 6, pas: 20, etalonnage: "2025-09-02" },
+  "Soco10 Toulouse": { M: 63.9, h: 75, A: 20, facteur: 0.82, m_acc: 13, m_tige: 6, pas: 20, etalonnage: "2025-01-14" },
   Autre: {},
 };
-const dynVide = () => ({ appareil: "Soco10 Bordeaux", h: 75, A: 20, facteur: 0.836, M: 64, m_acc: 10.3, m_tige: 6, L_tige: 1, pas: 20, avant_trou: 0, refus: false, z_refus: null, mesures: [] });
+const dynVide = () => ({ appareil: "Soco10 Bordeaux", h: 75, A: 20, facteur: 0.836, M: 64, m_acc: 10.3, m_tige: 6, L_tige: 1, pas: 20, etalonnage: "2025-09-02", avant_trou: 0, refus: false, z_refus: null, mesures: [] });
 function qdDyn(n, z, p) {
   if (n == null || !(n > 0)) return null;
   const M = +p.M || 63.5, hc = (+p.h || 75) / 100, A = (+p.A || 20) / 1e4, pas = (+p.pas || 10) / 100, L = +p.L_tige || 1;
@@ -721,15 +775,20 @@ function carteDynTel(s) {
     h("div", { class: "g2" }, champ("Masse du mouton (kg)", p, "M", { type: "num", apres: calc }), champ("Hauteur de chute (cm)", p, "h", { type: "num", apres: calc })),
     h("div", { class: "g2" }, champ("Surface de pointe (cm²)", p, "A", { type: "num", apres: calc }), champ("Facteur de correction", p, "facteur", { type: "num", apres: calc })),
     h("div", { class: "g2" }, champ("Accessoire mobile (kg)", p, "m_acc", { type: "num", apres: calc }), champ("Masse d'une tige (kg)", p, "m_tige", { type: "num", apres: calc })),
-    champ("Longueur d'une tige (m)", p, "L_tige", { type: "num", apres: calc }));
+    h("div", { class: "g2" }, champ("Longueur d'une tige (m)", p, "L_tige", { type: "num", apres: calc }), champ("Dernier étalonnage", p, "etalonnage", { type: "date", apres: () => rendre() })));
   const resumeApp = () => "M " + fr(p.M, 1) + " kg · chute " + fr(p.h, 0) + " cm · pointe " + fr(p.A, 0) + " cm² · facteur " + fr(p.facteur, 3) + " · accessoire " + fr(p.m_acc, 1) + " kg · tige " + fr(p.m_tige, 1) + " kg";
   const zResume = h("div", { class: "doux", style: { fontSize: "13px" } }, resumeApp());
+  // dernier étalonnage de l'appareil : alerte au-delà d'un an avant l'essai
+  const et = p.etalonnage || (APPAREILS_DYN[p.appareil] || {}).etalonnage, jEt = et ? Math.round((dIso(s.date || aujourdhui()) - dIso(et)) / 864e5) : null;
+  const zEtal = h("div", { class: et && jEt > 365 ? "alerte" : "suivi-pz" + (et ? "" : " fini"), style: { fontSize: "13px", padding: "7px 10px" } },
+    h("b", {}, "Dernier étalonnage : "), et ? dateFr(et) : "non renseigné", et && jEt > 365 ? " - plus d'un an avant l'essai : faire étalonner l'appareil" : "");
   construire();
   return h("div", { class: "carte" },
     h("div", { class: "g2" },
       champ("Appareil", p, "appareil", { type: "select", options: Object.keys(APPAREILS_DYN).map(k => [k, k]), apres: () => { Object.assign(p, APPAREILS_DYN[p.appareil]); reprendrePas(); sauver(); rendre(); } }),
       champ("Pas de comptage", p, "pas", { type: "select", options: [["10", "0,10 m (N10)"], ["20", "0,20 m (N20)"]], apres: () => { p.pas = +p.pas; reprendrePas(); sauver(); rendre(); } })),
     h("div", { class: "ligne", style: { gap: "8px" } }, zResume, h("span", { class: "esp" }), h("button", { class: "mini", onclick: () => { p._voir = !p._voir; voirParam.style.display = p._voir ? "block" : "none"; } }, "Réglages")),
+    zEtal,
     voirParam,
     h("div", { class: "g2" }, champ("Avant-trou (m)", p, "avant_trou", { type: "num", apres: () => { reprendrePas(); sauver(); construire(); } }),
       h("label", { class: "ligne", style: { gap: "8px", alignSelf: "end", minHeight: "44px", fontWeight: 600 } },
@@ -899,6 +958,7 @@ function vueSondage() {
   const majGps = () => { zoneGps.textContent = s.lat == null ? "Position non relevée" : fr(Math.abs(s.lat), 6) + (s.lat < 0 ? " S, " : " N, ") + fr(Math.abs(s.lon), 6) + (s.lon < 0 ? " O" : " E") + (s.prec ? "  (± " + Math.round(s.prec) + " m)" : ""); };
   majGps();
   const out = [
+    s.consigne || s.prof_prevue != null ? h("div", { class: "suivi-pz" }, h("b", {}, "À réaliser : "), [s.prof_prevue != null ? "profondeur prévue " + fr(s.prof_prevue, 1) + " m" : "", s.consigne || ""].filter(Boolean).join(" · ")) : null,
     prevu.length ? h("button", { class: "plein", onclick: () => allerTech((() => { const js = joursDe(prevu[0]); return js.find(j => j >= aujourdhui()) || js[0]; })()) },
       "Prévu au planning : " + prevu.map(c => multiJours(c) ? "du " + dateFr(c.date) + " au " + dateFr(c.date_fin) : dateFr(c.date)).join(" ; ") + " ›") : null,
     h("div", { class: "carte" },
