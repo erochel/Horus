@@ -1,5 +1,5 @@
-// HORUS Terrain : fonctionnement hors connexion (version 89b9db73)
-const CACHE = "horus-terrain-89b9db73";
+// HORUS Terrain : fonctionnement hors connexion (version 897226b8)
+const CACHE = "horus-terrain-897226b8";
 const FICHIERS = ["./", "index.html", "manifest.webmanifest", "icone-180.png", "icone-192.png", "icone-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FICHIERS)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

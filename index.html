@@ -100,6 +100,13 @@ button.mini{min-height:36px;font-size:14px;padding:0 10px;border-radius:9px}
   padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:var(--ombre);max-width:90%}
 .alerte{background:#FFF4DE;color:#7A4B00;border-radius:12px;padding:10px 12px;font-size:13.5px}
 .ins{gap:6px}
+.docs-ins{display:flex;flex-direction:column;gap:4px;margin-top:2px}
+.doc-ligne{display:flex;justify-content:space-between;gap:8px;text-align:left;font-weight:600;background:#fff;border:1px solid var(--ligne);border-radius:10px;padding:9px 12px}
+.doc-ligne span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-barre{gap:8px;align-items:center;position:sticky;top:0;background:var(--fond,#F5F7FA);padding:6px 0;z-index:2}
+.doc-pages{overflow:auto;max-height:calc(100vh - 170px);-webkit-overflow-scrolling:touch;background:#e9edf3;border-radius:10px;padding:4px}
+.doc-pages img{display:block;width:100%;max-width:none;margin:0 auto 6px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.doc-num{font-size:12px;color:#5b6b85;padding:4px 6px}
 .ins-l{display:grid;grid-template-columns:78px 1fr;gap:8px;font-size:14.5px}
 a.bouton{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:var(--bleu,#223558);background:#fff;border:1px solid var(--ligne);border-radius:10px;padding:6px 12px;font-weight:600}
 .dyn-l{display:grid;grid-template-columns:80px 1fr 90px;gap:8px;align-items:center;padding:3px 0;border-bottom:1px solid #EEF1F5}
@@ -246,7 +253,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.26";
+const VERSION_APP = "1.27";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -343,6 +350,13 @@ function ecrire(d) {
     catch (e) { ok(); }
   });
 }
+function lireUn(id) {
+  if (!STORE.db) return Promise.resolve(STORE.memoire.get(id) || null);
+  return new Promise(ok => {
+    try { const r = STORE.db.transaction("dossiers").objectStore("dossiers").get(id); r.onsuccess = () => ok(r.result || null); r.onerror = () => ok(STORE.memoire.get(id) || null); }
+    catch (e) { ok(STORE.memoire.get(id) || null); }
+  });
+}
 function effacer(id) {
   STORE.memoire.delete(id);
   if (!STORE.db) return Promise.resolve();
@@ -377,7 +391,9 @@ function rendre() {
   else if (v === "carte") m.append(...vueCarte().filter(Boolean));
   else if (v === "plan") m.append(...vuePlan().filter(Boolean));
   else if (v === "guidage") m.append(...vueGuidage().filter(Boolean));
+  else if (v === "doc") m.append(...vueDoc().filter(Boolean));
   if (v !== "guidage") arreterGuidage();
+  if (v !== "doc") libererUrlsDoc();
 }
 $("#b-retour").onclick = retour;
 
@@ -473,7 +489,7 @@ function vueDossier() {
     h("div", { class: "carte" }, champ("Numéro d'affaire", d, "numero", { caps: "characters" }), champ("Nom", d, "nom"), champ("Commune", d, "commune"),
       h("div", { class: "g2" }, champ("Opérateur", d, "operateur"), champ("Machine", d, "machine")),
       d.exporte ? h("p", { class: "doux", style: { margin: 0 } }, "Dernier envoi : " + new Date(d.exporte).toLocaleString("fr-FR")) : null,
-      h("button", { class: "dang", onclick: () => confirmer("Supprimer le dossier « " + (d.numero || d.nom || "sans nom") + " » et toutes ses saisies de ce téléphone ?", async () => { DOSSIERS = DOSSIERS.filter(x => x !== d); await effacer(d.id); PILE = [{ v: "accueil" }]; rendre(); }) }, "Supprimer ce dossier du téléphone")),
+      h("button", { class: "dang", onclick: () => confirmer("Supprimer le dossier « " + (d.numero || d.nom || "sans nom") + " » et toutes ses saisies de ce téléphone ?", async () => { DOSSIERS = DOSSIERS.filter(x => x !== d); await effacer(d.id); await effacer("__docs__" + d.id); PILE = [{ v: "accueil" }]; rendre(); }) }, "Supprimer ce dossier du téléphone")),
   ];
 }
 /* dans le dossier : ses créneaux du planning Tech (lien choisi ou même n° d'affaire) */
@@ -508,10 +524,16 @@ const sondageVide = (d, nom, type) => ({ id: uid("s"), nom, type, date: aujourdh
 /* plan préparé dans HORUS (Implantation › « Envoyer le plan au téléphone ») : dossier retrouvé par son n° d'affaire ou créé,
    sondages retrouvés par leur nom ou créés ; positions (levé ou placement HORUS), types et étiquettes repris */
 function recevoirPlan() {
-  const inp = h("input", { type: "file", accept: ".txt,.json,text/plain,application/json", style: { display: "none" } });
+  const inp = h("input", { type: "file", style: { display: "none" } });
   inp.onchange = async () => {
     const f = inp.files[0]; inp.remove(); if (!f) return;
-    let j = null; try { j = JSON.parse(await f.text()); } catch (e) { /* illisible */ }
+    let j = null, DOCS = null;
+    try {
+      const buf = new Uint8Array(await f.arrayBuffer());
+      const c = lireHdoc(buf);                 // V 1.27 : plan + documents DICT compressés (un seul fichier .hdoc)
+      if (c) { j = c.index.plan; DOCS = c; }
+      else j = JSON.parse(new TextDecoder().decode(buf));
+    } catch (e) { /* illisible */ }
     // plan préparé dans HORUS (HORUS-plan) ou implantation provisoire de RÂ / d'un autre téléphone (HORUS-terrain)
     if (!j || !["HORUS-plan", "HORUS-terrain"].includes(j.format)) return toast("Fichier non reconnu : choisissez le plan envoyé par HORUS (HORUS_plan_….txt) ou l'implantation RÂ (HORUS_implantation_….json).", 5000);
     const source = j.format === "HORUS-plan" ? "HORUS" : (/R[ÂA]/i.test(JSON.stringify(j.app || j.emetteur || "") + (j.sondages || []).map(x => x.commentaire || "").join(" ")) ? "RÂ" : "fichier");
@@ -557,6 +579,7 @@ function recevoirPlan() {
       if (j.reseaux_marge != null) d.reseaux_marge = +j.reseaux_marge;
       nRes = d.reseaux.length;
     }
+    if (DOCS) { toast("Préparation des documents DICT…", 4000); const n = await enregistrerDocs(d, DOCS); txtIns += ", " + n + " document(s) DICT"; }
     d.maj = new Date().toISOString();
     await ecrire(d);
     if (PLANNING && txtIns.includes("créneau")) sauverPlanning();
@@ -565,6 +588,85 @@ function recevoirPlan() {
     if (!j.instruction) PILE = [{ v: "accueil" }, { v: "dossier", d: d.id }, { v: "plan", d: d.id }];
   };
   document.body.append(inp); inp.click();
+}
+/* ---------- documents DICT de l'instruction (V 1.27) : fichier .hdoc préparé par HORUS (ginsond/docs_tel.py)
+   "HORUS-DOCS/1\n" | uint32 longueur de l'index | index JSON | JPEG / PDF à la suite.
+   Stockés à part du dossier (enregistrement "__docs__<id du dossier>", pages en Blob) ; d.docs_info = [{id, nom, pages}] */
+const MAGIE_HDOC = "HORUS-DOCS/1\n";
+function lireHdoc(buf) {
+  if (buf.length < 17 || new TextDecoder().decode(buf.subarray(0, MAGIE_HDOC.length)) !== MAGIE_HDOC) return null;
+  const k = MAGIE_HDOC.length, n = new DataView(buf.buffer, buf.byteOffset + k, 4).getUint32(0, true);
+  const index = JSON.parse(new TextDecoder().decode(buf.subarray(k + 4, k + 4 + n)));
+  return { index, data: buf.subarray(k + 4 + n) };
+}
+async function pdfEnImages(blob) {
+  const lib = await moteurPdf();
+  const doc = await lib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise;
+  const out = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const pg = await doc.getPage(i), v0 = pg.getViewport({ scale: 1 });
+    const sc = Math.min(2000 / Math.max(v0.width, v0.height), 4), vp = pg.getViewport({ scale: sc });
+    const cv = document.createElement("canvas"); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+    const cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height);
+    await pg.render({ canvasContext: cx, viewport: vp }).promise;
+    out.push({ blob: await new Promise(ok => cv.toBlob(ok, "image/jpeg", 0.7)), l: cv.width, h: cv.height });
+  }
+  return out;
+}
+async function enregistrerDocs(d, c) {
+  const docs = [];
+  for (const x of c.index.docs || []) {
+    if (x.type === "pdf") {
+      const pdf = new Blob([c.data.subarray(x.o, x.o + x.n)], { type: "application/pdf" });
+      let pages = null;
+      try { pages = await pdfEnImages(pdf); } catch (e) { /* hors connexion : conversion plus tard depuis le document */ }
+      docs.push({ id: x.id, nom: x.nom, type: pages ? "jpg" : "pdf", pdf: pages ? null : pdf, pages: pages || [], nb_pages: x.nb_pages });
+    } else {
+      docs.push({ id: x.id, nom: x.nom, type: "jpg", pages: (x.pages || []).map(p => ({ blob: new Blob([c.data.subarray(p.o, p.o + p.n)], { type: "image/jpeg" }), l: p.l, h: p.h })) });
+    }
+  }
+  await ecrire({ id: "__docs__" + d.id, dossier: d.id, recu: aujourdhui(), docs });
+  d.docs_info = docs.map(x => ({ id: x.id, nom: x.nom, pages: x.pages.length || x.nb_pages || 0, a_convertir: x.type === "pdf" }));
+  return docs.length;
+}
+let URLS_DOC = [];
+function libererUrlsDoc() { URLS_DOC.forEach(u => URL.revokeObjectURL(u)); URLS_DOC = []; }
+function vueDoc() {
+  const d = D(), v = vue();
+  const info = d && (d.docs_info || []).find(x => x.id === v.doc);
+  barre();
+  if (!info) return [h("p", { class: "doux" }, "Document introuvable.")];
+  const boite = h("div", { class: "doc-pages" }, h("p", { class: "doux" }, "Chargement…"));
+  let zoom = v.zoom || 1;
+  const appliquer = () => { boite.querySelectorAll("img").forEach(i => { i.style.width = (zoom * 100) + "%"; }); lib.textContent = Math.round(zoom * 100) + " %"; };
+  const lib = h("span", { style: { minWidth: "52px", textAlign: "center", fontWeight: 700 } });
+  const zoomer = f => { const ax = boite.scrollLeft / Math.max(1, boite.scrollWidth), ay = boite.scrollTop / Math.max(1, boite.scrollHeight);
+    zoom = Math.min(5, Math.max(1, zoom * f)); v.zoom = zoom; appliquer();
+    boite.scrollLeft = ax * boite.scrollWidth; boite.scrollTop = ay * boite.scrollHeight; };
+  (async () => {
+    const rec = await lireUn("__docs__" + d.id);
+    const doc = rec && rec.docs.find(x => x.id === v.doc);
+    boite.innerHTML = "";
+    if (!doc) return boite.append(h("p", { class: "doux" }, "Document absent de ce téléphone : recevoir à nouveau le fichier .hdoc."));
+    if (doc.type === "pdf") {
+      const u = URL.createObjectURL(doc.pdf); URLS_DOC.push(u);
+      return boite.append(h("div", { class: "carte" }, h("p", {}, "Ce PDF n'a pas encore été converti en images (pas de connexion à la réception)."),
+        h("button", { class: "prim", onclick: async () => { try { toast("Conversion…"); doc.pages = await pdfEnImages(doc.pdf); doc.type = "jpg"; doc.pdf = null; await ecrire(rec);
+          info.pages = doc.pages.length; info.a_convertir = false; sauver(); rendre(); } catch (e) { toast("Conversion impossible : " + e.message, 4000); } } }, "Convertir maintenant"),
+        h("a", { class: "bouton", href: u, target: "_blank", rel: "noopener", style: { marginLeft: "8px" } }, "Ouvrir le PDF")));
+    }
+    doc.pages.forEach((p, k) => {
+      const u = URL.createObjectURL(p.blob); URLS_DOC.push(u);
+      const img = h("img", { src: u, alt: "page " + (k + 1), loading: "lazy" });
+      img.addEventListener("dblclick", () => zoomer(zoom > 1.5 ? 1 / zoom : 2.5));
+      boite.append(h("div", { class: "doc-num" }, "Page " + (k + 1) + " / " + doc.pages.length), img);
+    });
+    appliquer();
+  })();
+  return [h("h2", {}, info.nom),
+    h("div", { class: "ligne doc-barre" }, h("button", { class: "mini", onclick: () => zoomer(1 / 1.5) }, "−"), lib, h("button", { class: "mini", onclick: () => zoomer(1.5) }, "+"),
+      h("button", { class: "mini", onclick: () => zoomer(1 / zoom) }, "Ajuster"), h("span", { class: "doux", style: { fontSize: "12px" } }, "Double-toucher : zoom")),
+    boite];
 }
 /* créneau « terrain » du planning tiré de l'instruction (identifiant stable par dossier : un nouvel envoi le met à jour) */
 function ajouterCreneauInstruction(d) {
@@ -600,6 +702,9 @@ function carteInstruction(d) {
       tel ? h("a", { class: "bouton mini", href: "sms:" + tel }, "SMS") : null,
       I.contact_mail ? h("a", { class: "bouton mini", href: "mailto:" + I.contact_mail + "?subject=" + encodeURIComponent((d.numero || "") + " - sondages") }, "Mail") : null,
       I.du && PLANNING ? h("button", { class: "mini", onclick: () => { ajouterCreneauInstruction(d); sauverPlanning(); toast(cr ? "Créneau du planning mis à jour." : "Créneau ajouté au planning."); rendre(); } }, cr ? "Remettre au planning" : "Ajouter au planning") : null),
+    (d.docs_info || []).length ? h("div", { class: "docs-ins" }, h("div", { class: "doux", style: { fontSize: "13px", fontWeight: 700 } }, "Documents DICT (" + d.docs_info.length + ")"),
+      ...d.docs_info.map(x => h("button", { class: "doc-ligne", onclick: () => aller({ v: "doc", d: d.id, doc: x.id }) },
+        h("span", {}, x.nom), h("span", { class: "doux" }, x.a_convertir ? "à convertir" : x.pages + " p.")))) : null,
     h("p", { class: "doux", style: { margin: 0, fontSize: "12px" } }, "Reçue le " + dateFr(I.recu || aujourdhui()) + (I.redige_par ? " · de " + I.redige_par : "")))];
 }
 function nouveauSondage(d) {
@@ -3162,7 +3267,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden && ch
   try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) { /* facultatif */ }
   const tout = await lireTout();
   PLANNING = tout.find(x => x.id === "__planning__") || null;
-  DOSSIERS = tout.filter(x => x.id !== "__planning__");
+  DOSSIERS = tout.filter(x => !String(x.id).startsWith("__"));        // __planning__, __docs__<dossier> (documents DICT)
   if (!DOSSIERS.length && !STORE.ok) DOSSIERS = [];
   rendre();
   window.__horusOK = true;
