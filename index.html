@@ -253,7 +253,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.27";
+const VERSION_APP = "1.28";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -697,7 +697,10 @@ function carteInstruction(d) {
     ligne("Équipe", I.equipe), ligne("Machine", I.machine),
     I.remarques ? h("div", { class: "alerte", style: { whiteSpace: "pre-wrap" } }, I.remarques) : null,
     h("div", { class: "ligne", style: { gap: "6px", flexWrap: "wrap" } },
-      I.adresse ? h("a", { class: "bouton mini", href: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(I.adresse), target: "_blank", rel: "noopener" }, "Itinéraire") : null,
+      // 1.28 : même choix d'application de navigation que le planning (appui long = changer d'application)
+      I.adresse ? (() => { let long = false; return h("button", { class: "mini", type: "button",
+        onclick: () => { if (!long) itineraire(I.adresse); long = false; },
+        oncontextmenu: e => { e.preventDefault(); long = true; itineraire(I.adresse, true); } }, "Itinéraire"); })() : null,
       tel ? h("a", { class: "bouton mini", href: "tel:" + tel }, "Appeler") : null,
       tel ? h("a", { class: "bouton mini", href: "sms:" + tel }, "SMS") : null,
       I.contact_mail ? h("a", { class: "bouton mini", href: "mailto:" + I.contact_mail + "?subject=" + encodeURIComponent((d.numero || "") + " - sondages") }, "Mail") : null,
