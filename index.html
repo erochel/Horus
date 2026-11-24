@@ -253,7 +253,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.29";
+const VERSION_APP = "1.30";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -1257,6 +1257,77 @@ function guideLitho(o, change, opts = {}) {
   el.redessiner = () => { inPlus.value = o.plus || ""; dessiner(); };
   return el;
 }
+/* ---------- 1.30 : dictée d'une couche. Phrase libre (micro du clavier iPhone, ou reconnaissance vocale du navigateur)
+   → {de, a, guide}. Ex. « de 2 à 3,50 argile limoneuse brune ferme humide avec racines ». */
+const sansAccD = t => (t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/['’]/g, " ");
+const NB_MOTS = { zero: 0, un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7, huit: 8, neuf: 9, dix: 10, onze: 11, douze: 12, treize: 13,
+  quatorze: 14, quinze: 15, seize: 16, vingt: 20, trente: 30, quarante: 40, cinquante: 50, soixante: 60, demi: 0.5 };
+function nombresDictee(t) {
+  // mots → chiffres (« trois virgule cinq », « deux mètres cinquante », « vingt-cinq »)
+  t = t.replace(/\b(vingt|trente|quarante|cinquante|soixante)(?:[- ]et[- ]un\b|-(deux|trois|quatre|cinq|six|sept|huit|neuf)\b)/g, (m, a, b) => String(NB_MOTS[a] + (b ? NB_MOTS[b] : 1)));
+  t = t.replace(/\b(dix)[- ](sept|huit|neuf)\b/g, (m, a, b) => String(10 + NB_MOTS[b]));
+  t = t.replace(/\b(zero|une?|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingt|trente|quarante|cinquante|soixante)\b/g, m => String(NB_MOTS[m]));
+  t = t.replace(/(\d+)\s*(?:virgule|point)\s*(\d+)/g, "$1.$2").replace(/(\d+),(\d+)/g, "$1.$2");
+  t = t.replace(/(\d+)\s*(?:m|metres?)\s*(\d{1,2})\b(?!\s*(?:m\b|metres?|cm))/g, (m, a, b) => a + "." + (b.length === 1 ? "0" + b : b));   // 3 m 50 → 3.50
+  t = t.replace(/(\d+(?:\.\d+)?)\s*(?:m|metres?)\b/g, "$1");
+  return t;
+}
+function lireDictee(txt, deDefaut) {
+  let t = nombresDictee(" " + sansAccD(txt) + " ");
+  const r = { de: null, a: null, guide: guideVide() }, o = r.guide;
+  let m;
+  if ((m = t.match(/\b(?:de|depuis|entre)\s+(\d+(?:\.\d+)?)\s+(?:a|jusqu a|et)\s+(\d+(?:\.\d+)?)/))) { r.de = +m[1]; r.a = +m[2]; }
+  else if ((m = t.match(/(\d+(?:\.\d+)?)\s+(?:a|-)\s+(\d+(?:\.\d+)?)/))) { r.de = +m[1]; r.a = +m[2]; }
+  else if ((m = t.match(/\b(?:jusqu a|a)\s+(\d+(?:\.\d+)?)/))) { r.de = deDefaut ?? null; r.a = +m[1]; }
+  if (m) t = t.replace(m[0], " ");
+  const noms = [["terre_vegetale", /\bterre vegetale\b/], ["remblai", /\bremblais?\b/], ["argile", /\bargiles?\b/], ["limon", /\blimons?\b/],
+    ["sable", /\bsables?\b/], ["grave", /\b(?:graves?|graviers?)\b/], ["marne", /\bmarnes?\b/], ["vase", /\bvases?\b/], ["tourbe", /\btourbes?\b/],
+    ["calcaire", /\bcalcaires?\b/], ["gres", /\bgres\b/], ["flysch", /\bflysch\b/], ["roche_alteree", /\broche alteree\b/], ["enrobe", /\benrobes?\b/], ["beton", /\bbetons?\b/]];
+  let pos = 1e9;
+  for (const [id, re] of noms) { const k = t.search(re); if (k > -1 && k < pos) { pos = k; o.mat = id; } }
+  const fam = o.mat ? MAT[o.mat].fam : null;
+  const adj = [["sableux", /\bsable(?:ux|use)\b/], ["limoneux", /\blimone(?:ux|use)\b/], ["argileux", /\bargile(?:ux|use)\b/], ["graveleux", /\bgravele(?:ux|use)\b/],
+    ["à galets", /\b(?:a|avec)( des)? galets\b/], ["à blocs", /\b(?:a|avec)( des)? blocs\b/], ["à débris", /\b(?:a|avec)( des)? debris\b(?! de (?:brique|beton))/]];
+  for (const [k, re] of adj) if (re.test(t) && !(o.mat && k.startsWith(MAT[o.mat].lib.toLowerCase().slice(0, 4)))) o.sec.push(k);
+  if (/\b(?:peu|legerement)\b/.test(t)) o.peu = true;
+  if (fam === "grenu") {      // première granulométrie citée (« sable fin à moyen » → fin)
+    const g = [["fin", /\bfine?s?\b/], ["moyen", /\bmoyen(?:ne)?s?\b/], ["grossier", /\bgrossier(?:e|s|es)?\b/]].map(([k, re]) => [k, t.search(re)]).filter(x => x[1] > -1).sort((a, b) => a[1] - b[1]);
+    if (g.length) o.gran = g[0][0];
+  }
+  const cols = [["beige", /\bbeiges?\b/], ["marron", /\bmarrons?\b/], ["brun", /\bbrun(?:e|s|es)?\b/], ["ocre", /\bocres?\b/], ["gris", /\bgris(?:e|es)?\b/],
+    ["noir", /\bnoir(?:e|s|es)?\b/], ["jaune", /\bjaunes?\b/], ["verdâtre", /\bverdatres?\b/], ["rougeâtre", /\brougeatres?\b/], ["blanchâtre", /\bblanchatres?\b/], ["bariolé", /\bbariole(?:e|s|es)?\b/]];
+  o.coul = cols.map(([k, re]) => [k, t.search(re)]).filter(x => x[1] > -1).sort((a, b) => a[1] - b[1]).map(x => x[0]).slice(0, 2);
+  if (/\bclair(?:e|s)?\b/.test(t)) o.nuance = "clair"; else if (/\bfonce(?:e|s)?\b/.test(t)) o.nuance = "foncé";
+  const etats = { fin: [["très mou", /\btres (?:mou|molle)\b/], ["très raide", /\btres raide\b/], ["mou", /\b(?:mou|molle)\b/], ["ferme", /\bferme\b/], ["raide", /\braide\b/], ["dur", /\bdure?\b/]],
+    grenu: [["moyennement dense", /\bmoyennement dense\b/], ["très dense", /\btres dense\b/], ["lâche", /\blache\b/], ["dense", /\bdense\b/]],
+    roche: [["très altéré", /\btres alteree?\b/], ["fracturé", /\bfracturee?\b/], ["sain", /\bsaine?\b/], ["altéré", /\balteree?\b/]] };
+  for (const [k, re] of (etats[fam] || [])) if (re.test(t)) { o.etat = k; break; }
+  for (const [k, re] of [["très humide", /\btres humide\b/], ["saturé", /\bsaturee?\b/], ["humide", /\bhumide\b/], ["sec", /\b(?:sec|seche)\b/]]) if (re.test(t)) { o.hum = k; break; }
+  const elems = [["à passées sableuses", /passees? sableuses?/], ["à passées argileuses", /passees? argileuses?/], ["à passées graveleuses", /passees? graveleuses?/],
+    ["avec débris de briques", /debris de briques?/], ["avec débris de béton", /debris de beton/], ["avec racines", /\bracines?\b/], ["avec coquilles", /\bcoquill/],
+    ["avec matière organique", /matiere organique/], ["avec oxydations", /\boxydation/], ["avec cailloutis", /\bcailloutis\b/]];
+  o.elem = elems.filter(([, re]) => re.test(t)).map(([k]) => k);
+  return r;
+}
+function zoneDictee(appliquer) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const zt = h("textarea", { rows: 2, placeholder: "Touchez ici puis le micro du clavier : « de 2 à 3,50 argile limoneuse brune ferme humide »" });
+  const go = () => { if (zt.value.trim()) appliquer(zt.value); };
+  let rec = null;
+  const bMic = SR ? h("button", { type: "button", class: "mini", onclick: () => {
+    if (rec) { rec.stop(); return; }
+    rec = new SR(); rec.lang = "fr-FR"; rec.interimResults = true; rec.continuous = false;
+    bMic.textContent = "Arrêter";
+    rec.onresult = e => { zt.value = [...e.results].map(x => x[0].transcript).join(" "); };
+    rec.onend = () => { rec = null; bMic.textContent = "Micro"; go(); };
+    rec.onerror = () => { toast("Micro indisponible : utilisez le micro du clavier."); };
+    rec.start();
+  } }, "Micro") : null;
+  zt.addEventListener("change", go);
+  return h("div", { class: "carte", style: { padding: "10px", display: "flex", flexDirection: "column", gap: "6px", background: "#F3F6FB" } },
+    h("span", { style: { fontWeight: 600, fontSize: "13px" } }, "Dicter la couche"), zt,
+    h("div", { class: "ligne", style: { gap: "6px" } }, bMic, h("button", { type: "button", class: "mini", onclick: go }, "Remplir la couche"), h("span", { class: "doux", style: { fontSize: "12px" } }, "Vérifiez ensuite les étiquettes.")));
+}
 function editerCouche(s, i) {
   const L = s.lithologie, c = i == null ? null : L[i];
   const prec = i == null ? L[L.length - 1] : L[i - 1];
@@ -1267,8 +1338,16 @@ function editerCouche(s, i) {
   const majDesc = () => { if (!manuel) { v.description = phrase(o); zDesc.value = v.description; } };
   const precG = prec && prec.guide;
   const zGuide = guideLitho(o, majDesc, { precedent: precG, libPrecedent: "la couche précédente" });
+  let zProf = h("div", { class: "g2" }, champ("De (m)", v, "de", { type: "num" }), champ("À (m)", v, "a", { type: "num" }));
+  const zDict = zoneDictee(txt => {
+    const r = lireDictee(txt, v.de);
+    if (r.de != null) v.de = r.de; if (r.a != null) v.a = r.a;
+    const z2 = h("div", { class: "g2" }, champ("De (m)", v, "de", { type: "num" }), champ("À (m)", v, "a", { type: "num" })); zProf.replaceWith(z2); zProf = z2;
+    if (r.guide.mat) { Object.assign(o, guideVide(), r.guide); manuel = false; zGuide.redessiner(); majDesc(); }
+    else toast("Matériau non reconnu : choisissez-le dans les étiquettes.");
+  });
   feuille(i == null ? "Nouvelle couche" : "Couche " + fr(v.de, 2) + " – " + fr(v.a, 2) + " m", [
-    h("div", { class: "g2" }, champ("De (m)", v, "de", { type: "num" }), champ("À (m)", v, "a", { type: "num" })),
+    zDict, zProf,
     zGuide,
     h("label", { class: "ch" }, h("span", { class: "ligne" }, "Description", h("span", { class: "esp" }), h("button", { class: "mini", type: "button", onclick: () => { manuel = false; majDesc(); } }, "Recomposer")), zDesc),
     i != null ? h("button", { class: "dang", onclick: () => { L.splice(i, 1); suivreProfLitho(s); sauver(); document.querySelector(".feuille").remove(); rendre(); } }, "Supprimer cette couche") : null,
@@ -3020,7 +3099,17 @@ async function analyserPlanning(img, nomCherche, info) {
    Le PDF contient le texte (noms, jours « L 09/11 », heures « 10:0 », libellés) : pas de lecture optique, positions exactes.
    Les barres sont repérées sur la page rendue : couleur sous chaque libellé, étendue horizontale de cette couleur. */
 const PDFJS_CONF = window.HORUS_PDFJS || { src: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js", worker: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js" };
+/* 1.30 : lecteur PDF livré avec l'application (pdfjs/, mis en cache par le service worker) : DICT et plannings lisibles sans réseau.
+   Le CDN reste en secours (application ouverte hors site, ancien navigateur). */
+const PDFJS_LOCAL = { src: "pdfjs/pdf.min.mjs", worker: "pdfjs/pdf.worker.min.mjs" };
 async function moteurPdf() {
+  if (!window.pdfjsLib && !window.HORUS_PDFJS && /^https?:$/.test(location.protocol)) {
+    try {
+      const m = await import(new URL(PDFJS_LOCAL.src, location.href).href);
+      m.GlobalWorkerOptions.workerSrc = new URL(PDFJS_LOCAL.worker, location.href).href;
+      window.pdfjsLib = m;
+    } catch (e) { console.warn("pdf.js local indisponible", e); }
+  }
   if (!window.pdfjsLib) await new Promise((ok, ko) => { const s = h("script", { src: PDFJS_CONF.src }); s.onload = ok; s.onerror = () => ko(new Error("lecteur PDF non téléchargé (connexion ?)")); document.head.append(s); });
   if (!window.pdfjsLib) throw new Error("lecteur PDF indisponible");
   if (PDFJS_CONF.worker && !pdfjsLib.GlobalWorkerOptions.workerSrc) pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_CONF.worker;
@@ -3150,7 +3239,6 @@ function importerPlanning() {
   inp.onchange = async () => {
     const f = inp.files[0]; inp.remove(); if (!f) return;
     const estPdf = /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name);
-    if (!navigator.onLine && !window.pdfjsLib && !window.HORUS_OCR) return toast("La lecture du planning a besoin d'une connexion (téléchargement du lecteur la première fois).", 5000);
     const url = URL.createObjectURL(f), img = new Image();
     if (!estPdf) await new Promise((ok, ko) => { img.onload = ok; img.onerror = ko; img.src = url; }).catch(() => null);
     const etat = h("p", { class: "doux", style: { margin: 0 } }, "Préparation…");
