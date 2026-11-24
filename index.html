@@ -253,7 +253,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.30";
+const VERSION_APP = "1.31";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -477,9 +477,12 @@ function vueDossier() {
     h("button", { class: "plein", onclick: () => aller({ v: "carte", d: d.id }) }, "Cartes du site", h("small", { style: { display: "block", fontWeight: 400, opacity: .75 } }, "géologie, aléas, parcellaire")));
   const ordre = d.sondages.slice();
   const nPrevus = d.sondages.filter(aRealiser).length, nImpl = d.sondages.filter(s => s.implantation).length;
+  const hr = d.hors_reseau;
+  const bHR = d.sondages.some(x => x.lat != null || (x.implantation && x.implantation.lat != null)) ? h("button", { class: "plein", onclick: () => preparerHorsReseau(d) }, hr ? "Cartes hors réseau : prêtes" : "Préparer le chantier hors réseau",
+    h("small", { style: { display: "block", fontWeight: 400, opacity: .75 } }, hr ? hr.n + " images, " + fr(hr.mo, 1) + " Mo, le " + dateFr(hr.le.slice(0, 10)) + " · toucher pour mettre à jour" : "fonds IGN du site gardés sur le téléphone (au bureau ou la veille)")) : null;
   return [
     ...(carteInstruction(d) || []),
-    cartes,
+    cartes, bHR,
     nImpl ? h("button", { class: "plein" + (nPrevus ? " prim" : ""), onclick: () => aller({ v: "guidage", d: d.id }) }, nPrevus ? "Guidage vers les sondages prévus" : "Implantation : tous les sondages sont réalisés",
       h("small", { style: { display: "block", fontWeight: 400, opacity: .8 } }, (nImpl - nPrevus) + " réalisé(s) sur " + nImpl + " implanté(s)")) : null,
     h("h2", {}, "Sondages"),
@@ -492,7 +495,7 @@ function vueDossier() {
     h("div", { class: "carte" }, champ("Numéro d'affaire", d, "numero", { caps: "characters" }), champ("Nom", d, "nom"), champ("Commune", d, "commune"),
       h("div", { class: "g2" }, champ("Opérateur", d, "operateur"), champ("Machine", d, "machine")),
       d.exporte ? h("p", { class: "doux", style: { margin: 0 } }, "Dernier envoi : " + new Date(d.exporte).toLocaleString("fr-FR")) : null,
-      h("button", { class: "dang", onclick: () => confirmer("Supprimer le dossier « " + (d.numero || d.nom || "sans nom") + " » et toutes ses saisies de ce téléphone ?", async () => { DOSSIERS = DOSSIERS.filter(x => x !== d); await effacer(d.id); await effacer("__docs__" + d.id); PILE = [{ v: "accueil" }]; rendre(); }) }, "Supprimer ce dossier du téléphone")),
+      h("button", { class: "dang", onclick: () => confirmer("Supprimer le dossier « " + (d.numero || d.nom || "sans nom") + " » et toutes ses saisies de ce téléphone ?", async () => { DOSSIERS = DOSSIERS.filter(x => x !== d); await effacer(d.id); await effacer("__docs__" + d.id); try { await caches.delete("horus-tuiles-" + d.id); } catch (e) { /* */ } PILE = [{ v: "accueil" }]; rendre(); }) }, "Supprimer ce dossier du téléphone")),
   ];
 }
 /* dans le dossier : ses créneaux du planning Tech (lien choisi ou même n° d'affaire) */
@@ -526,6 +529,60 @@ const sondageVide = (d, nom, type) => ({ id: uid("s"), nom, type, date: aujourdh
   porchet: type === "EP" ? porchetVide() : null, etiquette: null });
 /* plan préparé dans HORUS (Implantation › « Envoyer le plan au téléphone ») : dossier retrouvé par son n° d'affaire ou créé,
    sondages retrouvés par leur nom ou créés ; positions (levé ou placement HORUS), types et étiquettes repris */
+/* ---------- 1.31 : cartes hors réseau. Fonds IGN (photo + plan) de l'emprise des sondages + 200 m, zooms 14 à 19,
+   rangés dans le cache « horus-tuiles-<dossier> » ; le service worker les sert quand la carte les demande. */
+const HR_ZMIN = 14, HR_ZMAX = 19, HR_MARGE = 200;
+function tuileXY(lat, lon, z) {
+  const n = 2 ** z, x = Math.floor((lon + 180) / 360 * n);
+  const r = lat * Math.PI / 180, y = Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n);
+  return [x, y];
+}
+function tuilesChantier(d) {
+  const pts = [];
+  for (const s of d.sondages) {
+    if (s.lat != null && s.lon != null) pts.push([+s.lat, +s.lon]);
+    if (s.implantation && s.implantation.lat != null) pts.push([+s.implantation.lat, +s.implantation.lon]);
+  }
+  if (!pts.length) return null;
+  const la = pts.map(p => p[0]), lo = pts.map(p => p[1]), lat0 = (Math.min(...la) + Math.max(...la)) / 2;
+  const dLa = HR_MARGE / 111320, dLo = HR_MARGE / (111320 * Math.cos(lat0 * Math.PI / 180));
+  const n = Math.max(...la) + dLa, sd = Math.min(...la) - dLa, w = Math.min(...lo) - dLo, e = Math.max(...lo) + dLo;
+  const urls = [];
+  for (const f of Object.values(FONDS)) for (let z = HR_ZMIN; z <= Math.min(HR_ZMAX, f[4] || HR_ZMAX); z++) {
+    const [x0, y0] = tuileXY(n, w, z), [x1, y1] = tuileXY(sd, e, z);
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) urls.push(urlTuile(f, z, x, y));
+  }
+  return urls;
+}
+async function preparerHorsReseau(d, discret) {
+  if (!("caches" in window)) return discret ? null : toast("Ce téléphone ne permet pas de garder les cartes.");
+  if (!navigator.onLine) return discret ? null : toast("Il faut du réseau pour préparer le chantier (à faire au bureau ou la veille).", 5000);
+  const urls = tuilesChantier(d);
+  if (!urls) return discret ? null : toast("Aucun sondage placé : rien à préparer.");
+  if (urls.length > 4000 && !discret && !confirm(urls.length + " images de carte à télécharger (sondages très éloignés). Continuer ?")) return;
+  if (preparerHorsReseau.encours) return; preparerHorsReseau.encours = true;
+  const c = await caches.open("horus-tuiles-" + d.id);
+  let fait = 0, octets = 0, rate = 0, i = 0;
+  const etat = h("div", { class: "toast" }); if (!discret) document.body.append(etat);
+  const maj = () => { etat.textContent = "Cartes hors réseau : " + fait + " / " + urls.length + " (" + Math.round(octets / 1e6) + " Mo)"; };
+  const ouvrier = async () => {
+    while (i < urls.length) {
+      const u = urls[i++];
+      try {
+        let r = await c.match(u);
+        if (!r) { r = await fetch(u, { mode: "cors" }); if (r.ok) await c.put(u, r.clone()); else rate++; }
+        octets += +(r.headers.get("content-length") || 0) || 20000;
+      } catch (e) { rate++; }
+      fait++; if (fait % 20 === 0) maj();
+    }
+  };
+  maj();
+  await Promise.all(Array.from({ length: 6 }, ouvrier));
+  etat.remove(); preparerHorsReseau.encours = false;
+  d.hors_reseau = { le: new Date().toISOString(), n: urls.length - rate, total: urls.length, mo: Math.round(octets / 1e5) / 10 };
+  await ecrire(d); rendre();
+  toast(rate ? "Cartes gardées : " + (urls.length - rate) + " / " + urls.length + " (réseau coupé en cours ?). Relancez pour compléter." : "Chantier prêt hors réseau : " + urls.length + " images de carte (" + d.hors_reseau.mo + " Mo).", 5000);
+}
 function recevoirPlan() {
   const inp = h("input", { type: "file", style: { display: "none" } });
   inp.onchange = async () => {
@@ -587,6 +644,7 @@ function recevoirPlan() {
     await ecrire(d);
     if (PLANNING && txtIns.includes("créneau")) sauverPlanning();
     toast((nouveau ? "Dossier créé" : "Dossier mis à jour") + " : " + crees + " sondage(s) créé(s), " + places + " implantation(s) reprise(s) (" + source + ")" + (nRes ? ", " + nRes + " DICT (réseaux)" : "") + txtIns + ".", 6000);
+    if (navigator.onLine && d.sondages.some(x => x.lat != null || (x.implantation && x.implantation.lat != null))) setTimeout(() => preparerHorsReseau(d, true), 1500);
     PILE = [{ v: "accueil" }]; aller(j.instruction ? { v: "dossier", d: d.id } : { v: "plan", d: d.id });
     if (!j.instruction) PILE = [{ v: "accueil" }, { v: "dossier", d: d.id }, { v: "plan", d: d.id }];
   };
