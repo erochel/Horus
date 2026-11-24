@@ -253,13 +253,16 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.28";
+const VERSION_APP = "1.29";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
   CPT: ["Pénétromètre statique", "#7B1FA2"], RF: ["Reconnaissance de fondation", "#00897B"], PZ: ["Piézomètre", "#1B8AC9"],
   EP: ["Essai de perméabilité Porchet", "#3F51B5"],
 };
+/* 1.29 : outils / tubages seulement pour les forages ; piézomètre posé seulement dans un forage (tarière, pressio, destructif, carotté) */
+const SANS_OUTILS = ["RF", "PM", "CPT", "EP", "PD"];
+const PIEZO_DANS = ["T", "SP", "SD", "SC"];
 /* matériaux : id de motif HORUS, genre, famille (fin, grenu, roche, autre), couleur du motif */
 const MATERIAUX = [
   ["terre_vegetale", "Terre végétale", "f", "autre", "#6B4F2A"], ["remblai", "Remblai", "m", "autre", "#9E9E9E"],
@@ -1098,8 +1101,8 @@ function vueSondage() {
       ...s.venues.map((v, i) => h("div", { class: "ligne" }, h("span", { class: "pill" }, "Venue d'eau à " + fr(v.prof, 2) + " m"), h("span", { class: "doux" }, v.txt || ""), h("span", { class: "esp" }),
         h("button", { class: "dang mini", "aria-label": "Retirer", onclick: () => { s.venues.splice(i, 1); sauver(); rendre(); } }, "×"))),
       h("button", { class: "mini", onclick: () => ajouterVenue(s) }, "+ Venue d'eau")),
-    h("h2", {}, "Outils et tubages"),
-    h("div", { class: "carte" }, ...passes(s, "outils", "Outil", "Tricône Ø63"), ...passes(s, "tubages", "Tubage", "LS Ø95")),
+    ...(!SANS_OUTILS.includes(s.type) || (s.outils || []).length || (s.tubages || []).length ? [h("h2", {}, "Outils et tubages"),
+      h("div", { class: "carte" }, ...passes(s, "outils", "Outil", "Tricône Ø63"), ...passes(s, "tubages", "Tubage", "LS Ø95"))] : []),
     h("h2", {}, "Photos"),
     h("div", { class: "carte" }, s.photos.length ? h("div", { class: "photos" }, ...s.photos.map((p, i) => h("figure", { onclick: () => editerPhoto(s, i, photoProf) },
       h("img", { src: p.data, alt: p.legende || "Photo " + (i + 1) }), h("figcaption", { title: p.legende || "" }, photoProf && p.de != null ? fr(p.de, 2) + " – " + fr(p.a, 2) + " m" + (s.type === "SC" && p.passes && p.passes.length ? " · " + p.passes.length + " passe" + (p.passes.length > 1 ? "s" : "") : "") : (p.legende || "Photo " + (i + 1)))))) : h("div", { class: "vide" }, "Aucune photo."),
@@ -1108,7 +1111,7 @@ function vueSondage() {
   if (s.type === "EP") out.splice(2, 0, h("h2", {}, "Essai Porchet"), cartePorchet(s));
   if (s.type === "PD") out.splice(2, 0, h("h2", {}, "Pénétromètre dynamique - nombre de coups"), carteDynTel(s));
   if (s.piezo) out.push(h("h2", {}, "Piézomètre"), cartePiezo(s));
-  else if (s.type !== "PZ" && s.type !== "EP") out.push(h("button", { onclick: () => { s.piezo = piezoVide(); sauver(); rendre(); } }, "Ce sondage est équipé en piézomètre"));
+  else if (PIEZO_DANS.includes(s.type)) out.push(h("button", { onclick: () => { s.piezo = piezoVide(); sauver(); rendre(); } }, "Ce sondage est équipé en piézomètre"));
   out.push(h("h2", {}, "Observations"), h("div", { class: "carte" }, champ("Remarques (foreur, arrêt, refus, venues…)", s, "commentaire", { type: "textarea", rows: 4 })),
     h("button", { class: "dang", onclick: () => confirmer("Supprimer le sondage " + s.nom + " ?", () => { d.sondages = d.sondages.filter(x => x !== s); sauver(d); retour(); }) }, "Supprimer ce sondage"));
   return out;
