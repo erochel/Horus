@@ -253,7 +253,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.31";
+const VERSION_APP = "1.32";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -446,6 +446,18 @@ function vueAccueil() {
   })) : h("div", { class: "vide" }, "Aucun dossier. Créez-en un pour commencer la campagne de sondages.",
     h("div", { style: { marginTop: "12px" } }, h("button", { class: "mini", onclick: exemple }, "Ouvrir un dossier d'exemple")))));
   out.push(h("p", { class: "doux", style: { margin: "4px 4px 0" } }, "Les saisies restent sur ce téléphone, même sans réseau. Envoyez le dossier par mail pour l'importer dans HORUS (bouton « Importer… »). Version " + VERSION_APP + "."));
+  // 1.32 : espace réellement occupé (iOS ne le montre pas dans Réglages) et stockage protégé contre l'effacement automatique
+  const zEsp = h("p", { class: "doux", style: { margin: "2px 4px 0", fontSize: "12.5px" } });
+  out.push(zEsp);
+  (async () => {
+    try {
+      let pers = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : false;
+      if (!pers && navigator.storage && navigator.storage.persist) pers = await navigator.storage.persist();
+      const e = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+      zEsp.textContent = (e ? "Espace utilisé sur ce téléphone : " + (e.usage >= 1e6 ? fr(e.usage / 1e6, 1) + " Mo" : Math.round(e.usage / 1e3) + " ko") + ". " : "")
+        + (pers ? "Données protégées : iOS ne les efface pas pour faire de la place." : "Données non protégées : envoyez régulièrement vos dossiers.");
+    } catch (err) { /* navigateur sans ces fonctions */ }
+  })();
   return out;
 }
 async function exemple() {
