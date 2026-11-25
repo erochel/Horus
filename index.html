@@ -253,7 +253,7 @@ button.itin{background:transparent;border:1px solid var(--ligne);color:#1B8AC9;m
 "use strict";
 /* ============================================================ HORUS Terrain
    Saisie des sondages sur le terrain (iPhone), hors connexion ; export par mail vers HORUS (format HORUS-terrain v1). */
-const VERSION_APP = "1.32";
+const VERSION_APP = "1.33";
 const TYPES = {
   SP: ["Sondage pressiométrique", "#EB9C20"], SD: ["Sondage destructif", "#2E86DE"], SC: ["Sondage carotté", "#455A64"],
   PM: ["Pelle mécanique", "#8D6E63"], T: ["Tarière", "#6D8F2A"], PD: ["Pénétromètre dynamique", "#C62828"],
@@ -2186,11 +2186,16 @@ function placerEtiquettes(L, rayon) {
 /* ---- guidage vers les sondages implantés (Terrain 1.22) : position suivie (watchPosition), distance et direction
    de la cible, boussole si le téléphone en a une (cap magnétique, iOS : webkitCompassHeading ; Android :
    deviceorientationabsolute). « Réaliser ici » relève la position : le sondage passe réalisé, écart noté. */
-const GUIDE = { watch: null, orient: null, pos: null, cap: null };
+const GUIDE = { watch: null, orient: null, pos: null, cap: null, prec: null, maj: null, tourner: null, rotF: null, rotN: null };
+/* angle de l'écran (portrait 0, paysage 90 / 270) : le cap de la boussole est donné pour le haut du téléphone en portrait */
+const angleEcran = () => { const a = screen.orientation && screen.orientation.angle != null ? screen.orientation.angle : (typeof window.orientation === "number" ? window.orientation : 0); return ((a % 360) + 360) % 360; };
+/* rotation sans tour complet parasite (359° → 1° = +2°, pas −358°) */
+const rotProche = (prec, cible) => prec == null ? cible : prec + ((((cible - prec) % 360) + 540) % 360 - 180);
 function arreterGuidage() {
   if (GUIDE.watch != null && navigator.geolocation) navigator.geolocation.clearWatch(GUIDE.watch);
   GUIDE.watch = null;
   if (GUIDE.orient) { window.removeEventListener("deviceorientationabsolute", GUIDE.orient, true); window.removeEventListener("deviceorientation", GUIDE.orient, true); GUIDE.orient = null; }
+  GUIDE.maj = GUIDE.tourner = null; GUIDE.rotF = GUIDE.rotN = null;
 }
 /* alerte réseaux (DICT) à une position : null si aucun réseau dans le fuseau + marge */
 function alerteDict(d, lat, lon, quoi) {
@@ -2207,18 +2212,24 @@ function vueGuidage() {
   entete("Guidage", d.numero || d.nom || "");
   barre(h("button", { onclick: () => aller({ v: "plan", d: d.id }) }, "Voir sur le plan"));
   const zCible = h("div", { class: "carte guide" }), zListe = h("div");
-  let cibleId = vue().s || null, manuel = !!vue().s, fleche = null, nord = null, txtDir = null, capCible = null;
+  let cibleId = vue().s || null, manuel = !!vue().s, fleche = null, nord = null, txtDir = null, capCible = null, etatB = null;
   const dist = s => GUIDE.pos ? distM(GUIDE.pos.lat, GUIDE.pos.lon, s.implantation.lat, s.implantation.lon) : null;
+  // V 1.33 : les capteurs appellent toujours la vue affichée (GUIDE.tourner / GUIDE.maj) ; avant, après un nouvel
+  // affichage de la page, ils continuaient de tourner l'ancienne flèche, détachée de l'écran : boussole figée nord en haut.
   const tourner = () => {
-    if (fleche && capCible != null) fleche.style.transform = "rotate(" + (capCible - (GUIDE.cap || 0)) + "deg)";
-    if (nord) nord.style.transform = "rotate(" + (-(GUIDE.cap || 0)) + "deg)";
+    const cap = GUIDE.cap || 0;
+    if (fleche && capCible != null) { GUIDE.rotF = rotProche(GUIDE.rotF, capCible - cap); fleche.style.transform = "rotate(" + GUIDE.rotF + "deg)"; }
+    if (nord) { GUIDE.rotN = rotProche(GUIDE.rotN, -cap); nord.style.transform = "rotate(" + GUIDE.rotN + "deg)"; }
+    if (etatB) etatB.textContent = GUIDE.cap == null ? "" : GUIDE.prec != null && (GUIDE.prec < 0 || GUIDE.prec > 25)
+      ? "Boussole imprécise : décrivez un 8 avec le téléphone pour la calibrer" : "Boussole active · cap " + Math.round(GUIDE.cap) + "°";
   };
+  GUIDE.tourner = tourner;
   const maj = () => {
     const L = d.sondages.filter(s => s.implantation), restants = L.filter(aRealiser);
     const tri = restants.slice().sort((a, b) => (dist(a) ?? 1e9) - (dist(b) ?? 1e9));
     if (!manuel || !restants.some(s => s.id === cibleId)) { cibleId = (tri[0] || {}).id || null; manuel = false; }    // par défaut : le plus proche
     const c = d.sondages.find(s => s.id === cibleId);
-    zCible.innerHTML = ""; fleche = nord = null; capCible = null;
+    zCible.innerHTML = ""; fleche = nord = etatB = null; capCible = null;
     if (!c) zCible.append(h("div", { class: "vide" }, L.length ? "Tous les sondages implantés sont réalisés." : "Aucune implantation : depuis l'accueil, « Recevoir un plan / implantation »."));
     else {
       const pos = GUIDE.pos, dm = dist(c);
@@ -2226,13 +2237,17 @@ function vueGuidage() {
       const arrive = dm != null && dm <= Math.max(3, Math.min(8, pos.acc || 5));
       fleche = h("div", { class: "guide-fleche" + (arrive ? " ok" : "") }); fleche.innerHTML = '<svg viewBox="-50 -50 100 100"><path d="M0-42L22 30L0 16L-22 30Z"/></svg>';
       nord = h("div", { class: "guide-nord" }, h("span", {}, "N"));
-      txtDir = h("div", { class: "guide-dir" }, !pos ? "Recherche de la position…" : arrive ? "Vous y êtes : relevez la position" : direction(capCible) + (GUIDE.cap == null ? " (flèche : nord en haut)" : ""));
-      zCible.append(
+      txtDir = h("div", { class: "guide-dir" }, !pos ? "Recherche de la position…" : arrive ? "Vous y êtes : relevez la position" : direction(capCible));
+      etatB = h("div", { class: "doux", style: { fontSize: "12.5px" } });
+      zCible.append(...[
         h("div", { class: "guide-nom" }, h("span", { class: "badge", style: { background: TYPES[c.type][1] } }, c.type), h("b", {}, c.nom),
           c.prof_prevue != null ? h("span", { class: "doux" }, "prof. prévue " + fr(c.prof_prevue, 1) + " m") : null),
         h("div", { class: "guide-rose" }, nord, pos ? fleche : null),
         h("div", { class: "guide-dist" + (arrive ? " ok" : "") }, dm == null ? "…" : dm < 1000 ? Math.round(dm) + " m" : fr(dm / 1000, 2) + " km"),
-        txtDir,
+        txtDir, etatB,
+        GUIDE.cap == null ? h("div", { class: "alerte", style: { margin: "6px 0", textAlign: "left" } }, h("b", {}, "Boussole non active : "),
+          "le N reste en haut de l'écran et la flèche se lit par rapport à lui (tournez-vous jusqu'à ce que le N montre le nord réel).",
+          boussoleIos ? h("div", { style: { marginTop: "6px" } }, h("button", { class: "prim", onclick: activerBoussole }, "Activer la boussole")) : null) : null,
         h("div", { class: "doux", style: { fontSize: "13px" } }, pos ? "Précision GPS ± " + Math.round(pos.acc) + " m" + (dm != null && dm < pos.acc ? " : à cette distance, fiez-vous au piquet" : "") : ""),
         alerteDict(d, c.implantation.lat, c.implantation.lon, "Implantation de " + c.nom),
         h("div", { class: "ligne", style: { gap: "8px", justifyContent: "center", marginTop: "6px" } },
@@ -2243,8 +2258,7 @@ function vueGuidage() {
                 if (a) { bip && bip(2); toast("⚠ " + c.nom + " : " + texteProximite(q) + (a === "dans" ? " - dans la zone d'incertitude du réseau." : "."), 8000); } },
                 P_ && Date.now() - P_.t < 10000 ? { latitude: P_.lat, longitude: P_.lon, accuracy: P_.acc } : null); };
             if (dm != null && dm > 15) confirmer("Vous êtes à " + Math.round(dm) + " m de l'implantation de " + c.nom + ". Réaliser le sondage ici quand même ?", go, "Réaliser ici"); else go(); } }, "Réaliser ici"),
-          h("button", { onclick: () => aller({ v: "sondage", d: d.id, s: c.id }) }, "Ouvrir " + c.nom)),
-        boussoleIos ? h("button", { class: "mini", onclick: activerBoussole }, "Activer la boussole") : null);
+          h("button", { onclick: () => aller({ v: "sondage", d: d.id, s: c.id }) }, "Ouvrir " + c.nom))].filter(Boolean));
       tourner();
     }
     zListe.innerHTML = "";
@@ -2257,23 +2271,30 @@ function vueGuidage() {
         h("span", { class: "badge", style: { background: TYPES[s.type][1], opacity: .55 } }, s.type), h("div", { class: "t" }, h("b", {}, s.nom),
           h("span", {}, "réalisé · écart " + fr(s.realise.ecart, 1) + " m")), h("span", { class: "pill ok" }, "✓"))))));
   };
+  GUIDE.maj = () => maj();
   // capteurs
-  const boussoleIos = typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function" && GUIDE.cap == null;
+  const boussoleIos = typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function";
   const ecouter = () => {
     if (GUIDE.orient) return;
     GUIDE.orient = e => {
-      const hd = e.webkitCompassHeading != null ? e.webkitCompassHeading : (e.absolute && e.alpha != null ? (360 - e.alpha) % 360 : null);
+      let hd = e.webkitCompassHeading != null && e.webkitCompassHeading >= 0 ? e.webkitCompassHeading
+        : (e.absolute && e.alpha != null ? (360 - e.alpha) % 360 : null);
       if (hd == null) return;
+      hd = (hd + angleEcran()) % 360;                         // téléphone tenu en paysage
+      GUIDE.prec = e.webkitCompassAccuracy != null ? e.webkitCompassAccuracy : null;
       const premier = GUIDE.cap == null; GUIDE.cap = hd;
-      if (premier) maj(); else tourner();
+      if (premier) { GUIDE.maj && GUIDE.maj(); } else { GUIDE.tourner && GUIDE.tourner(); }
     };
     window.addEventListener("deviceorientationabsolute", GUIDE.orient, true);
     window.addEventListener("deviceorientation", GUIDE.orient, true);
   };
-  const activerBoussole = async () => { try { if (await DeviceOrientationEvent.requestPermission() === "granted") ecouter(); } catch (e) { toast("Boussole indisponible : la flèche reste orientée nord en haut."); } };
-  if (!boussoleIos) ecouter();
+  const activerBoussole = async () => {
+    try { const r = await DeviceOrientationEvent.requestPermission();
+      if (r === "granted") { ecouter(); toast("Boussole activée : tenez le téléphone à plat."); } else toast("Boussole refusée : Réglages › Safari (ou l'app) › Mouvement et orientation."); }
+    catch (e) { toast("Boussole indisponible : le N reste en haut de l'écran."); } };
+  ecouter();                                                  // iPhone : les mesures arrivent d'office si l'accès a déjà été accordé
   if (navigator.geolocation && GUIDE.watch == null)
-    GUIDE.watch = navigator.geolocation.watchPosition(p => { GUIDE.pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, t: Date.now() }; maj(); },
+    GUIDE.watch = navigator.geolocation.watchPosition(p => { GUIDE.pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, t: Date.now() }; GUIDE.maj && GUIDE.maj(); },
       e => toast(e.code === 1 ? "Accès à la position refusé : autorisez-le dans les réglages du téléphone." : "Position indisponible (" + e.message + ")."),
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
   maj();

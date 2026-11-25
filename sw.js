@@ -1,5 +1,5 @@
-// HORUS Terrain : fonctionnement hors connexion (version 77b77de0)
-const CACHE = "horus-terrain-77b77de0", CACHE_PDF = "horus-pdfjs-6.2.108";
+// HORUS Terrain : fonctionnement hors connexion (version 7ed13751)
+const CACHE = "horus-terrain-7ed13751", CACHE_PDF = "horus-pdfjs-6.2.108";
 const FICHIERS = ["./", "index.html", "manifest.webmanifest", "icone-180.png", "icone-192.png", "icone-512.png"];
 const PDFJS = ["pdfjs/pdf.min.mjs", "pdfjs/pdf.worker.min.mjs"];
 self.addEventListener("install", e => { e.waitUntil(Promise.all([
